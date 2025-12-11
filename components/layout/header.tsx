@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { Bell, ChevronDown, Search } from 'lucide-react';
+import { Bell, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
+import UserMenu from '@/components/layout/user-menu';
 
 export function Header() {
   const pathname = usePathname();
@@ -15,6 +16,8 @@ export function Header() {
     if (pathname.includes('/settings')) return 'Settings';
     return 'Dashboard';
   };
+
+  
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-white/10 bg-[#0f1115] flex items-center justify-between px-8">
@@ -34,9 +37,7 @@ export function Header() {
         </Button>
 
         {/* User Profile */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 border border-white/20 overflow-hidden cursor-pointer">
-            <img src="https://github.com/shadcn.png" alt="User" className="w-full h-full object-cover" />
-        </div>
+        <UserMenu />
       </div>
     </header>
   );
