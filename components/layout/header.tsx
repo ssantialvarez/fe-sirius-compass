@@ -17,7 +17,7 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-white/10 bg-[#0f1115] flex items-center justify-between px-8">
+    <header className="sticky top-0 z-30 h-16 border-b border-white/10 bg-[#0f1115] flex items-center justify-between px-8">
       <h1 className="text-xl font-semibold text-white">{getTitle()}</h1>
 
       <div className="flex items-center gap-6">

@@ -37,7 +37,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 h-screen bg-[#0f1115] border-r border-white/10 flex flex-col text-white">
+    <div className="w-64 sticky top-0 h-screen bg-[#0f1115] border-r border-white/10 flex flex-col text-white">
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
             <div className="w-4 h-4 border-2 border-white rounded-full" />
@@ -45,7 +45,7 @@ export function Sidebar() {
         <span className="font-bold text-lg tracking-tight text-cyan-400">Sirius Compass</span>
       </div>
 
-      <nav className="flex-1 px-4 py-4 space-y-2">
+      <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
         {sidebarItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
