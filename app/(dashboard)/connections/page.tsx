@@ -167,9 +167,9 @@ export default function Connections() {
                 
                 <CardFooter>
                   <Button
-                    className={`w-full ${
+                    className={`w-full cursor-pointer duration-300 ${
                       isConnected
-                        ? 'bg-[var(--color-surface-hover)] hover:bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)]'
+                        ? 'bg-[var(--color-surface-hover)] hover:bg-[var(--color-background-secondary)] hover:text-[var(--color-text-primary)] text-[var(--color-text-primary)] border border-[var(--color-border)]'
                         : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
                     }`}
                     variant={isConnected ? "outline" : "default"}
