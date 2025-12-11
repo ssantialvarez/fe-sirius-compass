@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth0 } from "./lib/auth0";
 
 export async function proxy(request: NextRequest) {
-  return await auth0.middleware(request);
-  /*
+  //return await auth0.middleware(request);
+  
   const authRes = await auth0.middleware(request);
 
   // Authentication routes — let the Auth0 middleware handle it.
-  if (request.nextUrl.pathname.startsWith("/auth")) {
+  if (request.nextUrl.pathname.startsWith("/auth") || request.nextUrl.pathname === "/error") {
     return authRes;
   }
 
@@ -15,11 +15,11 @@ export async function proxy(request: NextRequest) {
   const session = await auth0.getSession(request);
 
   // User does not have a session — redirect to login.
-  if (!session) {
-    return NextResponse.redirect(`${origin}/auth/login`);
+  if (!session && request.nextUrl.pathname !== "/") {
+    return NextResponse.redirect(`${origin}/`);
   }
   return authRes;
-  */
+  
 }
 
 export const config = {

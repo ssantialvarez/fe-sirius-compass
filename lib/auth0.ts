@@ -10,7 +10,7 @@ export const auth0 = new Auth0Client({
     if (error) {
       console.error('Authentication error:', error);
       return NextResponse.redirect(
-        new URL('/error', process.env.APP_BASE_URL)
+        new URL('/error?authentication=true', process.env.APP_BASE_URL)
       );
     }
 
