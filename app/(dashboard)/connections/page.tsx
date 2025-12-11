@@ -1,6 +1,7 @@
-import { Database, GitBranch, Trello, Workflow, Plus, Settings, RefreshCw, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Database, GitBranch, Trello, Plus, Settings, RefreshCw, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
 
 export default function Connections() {
   const integrationTypes = [
@@ -112,10 +113,9 @@ export default function Connections() {
             All connections are secure and encrypted.
           </p>
         </div>
-        <Button className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white">
-          <Plus size={18} className="mr-2" />
-          Add Connection
-        </Button>
+        <AddConnectionDialog className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white flex items-center gap-2">
+          
+        </AddConnectionDialog>
       </div>
 
       {/* Integration cards grid */}
