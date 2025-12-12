@@ -26,11 +26,6 @@ export function Header() {
 
       <div className="flex items-center gap-6">
         {/* Project Selector */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-          <span>Project:</span>
-          <span className="text-foreground font-medium">Project: Saturn</span>
-          <ChevronDown size={16} />
-        </div>
         <ProjectSelector />
 
         {/* Notifications */}

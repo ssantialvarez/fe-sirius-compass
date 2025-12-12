@@ -16,7 +16,7 @@ export const ProjectSelector = () => {
       }
     };
     fetchProjects();
-  });
+  }, [currentProject, setCurrentProject, setProjects]);
 
   return (
     <Select
@@ -26,11 +26,11 @@ export const ProjectSelector = () => {
         if (selected) setCurrentProject(selected);
       }}
     >
-      <SelectTrigger className="min-w-[180px] bg-transparent border-none text-white focus:ring-0 focus:ring-offset-0">
-        <span className="text-gray-400 mr-2">Project:</span>
+      <SelectTrigger className="min-w-[180px] text-[14px] bg-transparent text-gray-400 font-medium border-none focus:ring-0 focus:ring-offset-0">
+        <span className="text-white mr-2">Project:</span>
         <SelectValue placeholder="Select project" />
       </SelectTrigger>
-      <SelectContent className="bg-[#1c1f26] text-gray-400 border-white/10">
+      <SelectContent className="bg-background text-gray-400 border-white/10">
         {projects.length > 0 ? (
           projects.map((p) => (
             <SelectItem
