@@ -7,11 +7,14 @@ import { HttpService } from "@/lib/service";
 export const ProjectSelector = () => {
   const [project, setProject] = useState<Project | undefined>(undefined);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
     const fetchProjects = async () => {
+      setLoading(true);
       const data = await HttpService.getProjects();
       setProjects(data);
+      setLoading(false);
       if (data.length > 0) {
         setProject(data[0]);
       }
@@ -27,12 +30,16 @@ export const ProjectSelector = () => {
         if (selected) setProject(selected);
       }}
     >
-      <SelectTrigger className="min-w-[180px] bg-transparent border-none text-white focus:ring-0 focus:ring-offset-0">
-        <span className="text-gray-400 mr-2">Project:</span>
-        <SelectValue placeholder="Select project" />
+      <SelectTrigger className="min-w-[180px] text-[14px] bg-transparent border-none text-gray-300 font-medium focus:ring-0 focus:ring-offset-0">
+        <span className="text-white mr-2">Project:</span>
+        <SelectValue placeholder="Select project"/>
       </SelectTrigger>
       <SelectContent className="bg-[#1c1f26] text-gray-400 border-white/10">
-        {projects.length > 0 ? (
+        {loading ? (
+          <SelectItem disabled value="loading">
+            <Skeleton className="h-4 w-32" />
+          </SelectItem>
+        ) : projects.length > 0 ? (
           projects.map((p) => (
             <SelectItem
               key={p.id}
@@ -43,8 +50,8 @@ export const ProjectSelector = () => {
             </SelectItem>
           ))
         ) : (
-          <SelectItem disabled value="loading">
-            <Skeleton className="h-4 w-32" />
+          <SelectItem disabled value="no-projects">
+            No projects available
           </SelectItem>
         )}
       </SelectContent>
