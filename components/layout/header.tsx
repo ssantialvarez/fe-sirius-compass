@@ -1,14 +1,16 @@
 "use client";
 
-import { Bell, ChevronDown } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import UserMenu from '@/components/layout/user-menu';
 import { ModeToggle } from '../mode-toggle';
+import { ProjectSelector } from '@/components/ui/project-selector';
 
 export function Header() {
   const pathname = usePathname();
-  
+
+
   const getTitle = () => {
     if (pathname.includes('/connections')) return 'Connections';
     if (pathname.includes('/dashboard')) return 'Dashboard';
@@ -29,6 +31,7 @@ export function Header() {
           <span className="text-foreground font-medium">Project: Saturn</span>
           <ChevronDown size={16} />
         </div>
+        <ProjectSelector />
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-accent">
