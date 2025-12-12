@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from 'lucide-react';
+import { Bell, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import UserMenu from '@/components/layout/user-menu';
