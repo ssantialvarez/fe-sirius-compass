@@ -70,10 +70,10 @@ export default function AnalysisChat() {
   return (
     <div className="h-full flex gap-6">
       {/* Left sidebar - Conversations */}
-      <div className="w-64 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+      <div className="w-64 bg-card border border-border rounded-xl p-4">
         <div className="mb-4">
-          <h3 className="text-[var(--color-text-primary)] mb-2">Conversations</h3>
-          <button className="w-full px-3 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors text-sm">
+          <h3 className="text-foreground mb-2">Conversations</h3>
+          <button className="w-full px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors text-sm">
             New conversation
           </button>
         </div>
@@ -83,29 +83,29 @@ export default function AnalysisChat() {
               key={conv.id}
               className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
                 index === 0
-                  ? 'bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30'
-                  : 'hover:bg-[var(--color-surface-hover)]'
+                  ? 'bg-primary/20 border border-primary/30'
+                  : 'hover:bg-accent'
               }`}
             >
-              <p className="text-sm text-[var(--color-text-primary)] mb-1 line-clamp-2">
+              <p className="text-sm text-foreground mb-1 line-clamp-2">
                 {conv.title}
               </p>
-              <p className="text-xs text-[var(--color-text-muted)]">{conv.time}</p>
+              <p className="text-xs text-muted-foreground">{conv.time}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+      <div className="flex-1 flex flex-col bg-card border border-border rounded-xl overflow-hidden">
         {/* Chat header */}
-        <div className="border-b border-[var(--color-border)] p-6">
+        <div className="border-b border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h3 className="text-[var(--color-text-primary)]">
+              <h3 className="text-foreground">
                 Squad Alpha – Performance
               </h3>
-              <span className="px-3 py-1 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-sm">
+              <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm">
                 AI Assistant
               </span>
             </div>
@@ -114,11 +114,11 @@ export default function AnalysisChat() {
           {/* Scope and time selectors */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Users size={16} className="text-[var(--color-text-muted)]" />
+              <Users size={16} className="text-muted-foreground" />
               <select
                 value={scope}
                 onChange={(e) => setScope(e.target.value)}
-                className="bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-sm cursor-pointer"
+                className="bg-muted text-foreground px-3 py-1.5 rounded-lg border border-border text-sm cursor-pointer"
               >
                 <option value="project">Project</option>
                 <option value="squad">Squad / Team</option>
@@ -127,11 +127,11 @@ export default function AnalysisChat() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-[var(--color-text-muted)]" />
+              <Calendar size={16} className="text-muted-foreground" />
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
-                className="bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-sm cursor-pointer"
+                className="bg-muted text-foreground px-3 py-1.5 rounded-lg border border-border text-sm cursor-pointer"
               >
                 <option value="sprint">This sprint</option>
                 <option value="4weeks">Last 4 weeks</option>
@@ -151,13 +151,13 @@ export default function AnalysisChat() {
               <div
                 className={`max-w-3xl ${
                   message.type === 'user'
-                    ? 'bg-[var(--color-primary)] text-white rounded-2xl rounded-tr-sm px-6 py-4'
+                    ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-6 py-4'
                     : 'space-y-4'
                 }`}
               >
                 {message.type === 'ai' && (
-                  <div className="bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-2xl rounded-tl-sm px-6 py-4">
-                    <p className="text-[var(--color-text-primary)] whitespace-pre-line">
+                  <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-6 py-4">
+                    <p className="text-foreground whitespace-pre-line">
                       {message.content}
                     </p>
                   </div>
@@ -168,35 +168,35 @@ export default function AnalysisChat() {
                 )}
 
                 {message.hasChart && message.chartData && (
-                  <div className="bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-xl p-6">
-                    <h4 className="text-[var(--color-text-primary)] mb-4">
+                  <div className="bg-muted border border-border rounded-xl p-6">
+                    <h4 className="text-foreground mb-4">
                       Sprint Velocity Progress
                     </h4>
                     <ResponsiveContainer width="100%" height={200}>
                       <AreaChart data={message.chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis
                           dataKey="day"
-                          stroke="var(--color-text-muted)"
-                          tick={{ fill: 'var(--color-text-muted)' }}
+                          stroke="var(--muted-foreground)"
+                          tick={{ fill: 'var(--muted-foreground)' }}
                         />
                         <YAxis
-                          stroke="var(--color-text-muted)"
-                          tick={{ fill: 'var(--color-text-muted)' }}
+                          stroke="var(--muted-foreground)"
+                          tick={{ fill: 'var(--muted-foreground)' }}
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'var(--color-surface)',
-                            border: '1px solid var(--color-border)',
+                            backgroundColor: 'var(--card)',
+                            border: '1px solid var(--border)',
                             borderRadius: '0.5rem',
-                            color: 'var(--color-text-primary)',
+                            color: 'var(--foreground)',
                           }}
                         />
                         <Area
                           type="monotone"
                           dataKey="velocity"
-                          stroke="var(--color-primary)"
-                          fill="var(--color-primary)"
+                          stroke="var(--primary)"
+                          fill="var(--primary)"
                           fillOpacity={0.3}
                           strokeWidth={2}
                         />
@@ -210,14 +210,14 @@ export default function AnalysisChat() {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-[var(--color-border)] p-6">
+        <div className="border-t border-border p-6">
           <div className="mb-3 flex gap-2">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <button
                   key={action.label}
-                  className="flex items-center gap-2 px-3 py-2 bg-[var(--color-background-secondary)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] rounded-lg transition-colors text-sm border border-[var(--color-border)]"
+                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent text-muted-foreground rounded-lg transition-colors text-sm border border-border"
                 >
                   <Icon size={14} />
                   {action.label}
@@ -233,11 +233,11 @@ export default function AnalysisChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Ask anything about teams, sprints, repos, or developers…"
-              className="flex-1 bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:outline-none transition-colors placeholder:text-[var(--color-text-muted)]"
+              className="flex-1 bg-muted text-foreground px-4 py-3 rounded-lg border border-border focus:border-primary focus:outline-none transition-colors placeholder:text-muted-foreground"
             />
             <button
               onClick={handleSend}
-              className="px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors flex items-center gap-2"
             >
               <Send size={18} />
               Send
