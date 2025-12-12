@@ -1,6 +1,7 @@
-import { Database, GitBranch, Trello, Workflow, Plus, Settings, RefreshCw, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Database, GitBranch, Trello, Plus, Settings, RefreshCw, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
 
 export default function Connections() {
   const integrationTypes = [
@@ -77,21 +78,21 @@ export default function Connections() {
     switch (status) {
       case 'active':
         return (
-          <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--color-success)]/20 text-[var(--color-success)] text-xs">
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-1/20 text-chart-1 text-xs">
             <CheckCircle size={12} />
             Active
           </span>
         );
       case 'syncing':
         return (
-          <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--color-warning)]/20 text-[var(--color-warning)] text-xs">
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-4/20 text-chart-4 text-xs">
             <Loader size={12} className="animate-spin" />
             Syncing
           </span>
         );
       case 'error':
         return (
-          <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--color-danger)]/20 text-[var(--color-danger)] text-xs">
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive text-xs">
             <XCircle size={12} />
             Error
           </span>
@@ -106,21 +107,20 @@ export default function Connections() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Your Integrations</h2>
-          <p className="text-[var(--color-text-secondary)] max-w-2xl">
+          <h2 className="text-2xl font-bold text-foreground">Your Integrations</h2>
+          <p className="text-muted-foreground max-w-2xl">
             Connect code repositories and task boards so Sirius Compass can compute metrics and insights.
             All connections are secure and encrypted.
           </p>
         </div>
-        <Button className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white">
-          <Plus size={18} className="mr-2" />
-          Add Connection
-        </Button>
+        <AddConnectionDialog className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2">
+          
+        </AddConnectionDialog>
       </div>
 
       {/* Integration cards grid */}
       <div>
-        <h3 className="text-[var(--color-text-primary)] mb-4 text-xl font-semibold">Available Integrations</h3>
+        <h3 className="text-foreground mb-4 text-xl font-semibold">Available Integrations</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {integrationTypes.map((integration) => {
             const Icon = integration.icon;
@@ -129,21 +129,21 @@ export default function Connections() {
             return (
               <Card
                 key={integration.id}
-                className={`bg-[var(--color-surface)] border transition-all ${
+                className={`bg-card border transition-all ${
                   isConnected
-                    ? 'border-[var(--color-primary)]/30'
-                    : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)]'
+                    ? 'border-primary/30'
+                    : 'border-border hover:border-sidebar-border'
                 }`}
               >
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="w-12 h-12 rounded-lg bg-[var(--color-background-secondary)] border border-[var(--color-border)] flex items-center justify-center">
-                    <Icon size={24} className="text-[var(--color-primary)]" />
+                  <div className="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center">
+                    <Icon size={24} className="text-primary" />
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-xs ${
                       isConnected
-                        ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
-                        : 'bg-[var(--color-text-muted)]/20 text-[var(--color-text-muted)]'
+                        ? 'bg-chart-1/20 text-chart-1'
+                        : 'bg-muted/20 text-muted-foreground'
                     }`}
                   >
                     {isConnected ? 'Connected' : 'Not connected'}
@@ -152,15 +152,15 @@ export default function Connections() {
 
                 <CardContent className="space-y-3 pt-4">
                   <div>
-                    <CardTitle className="text-[var(--color-text-primary)] text-lg">
+                    <CardTitle className="text-foreground text-lg">
                       {integration.name}
                     </CardTitle>
-                    <CardDescription className="text-[var(--color-text-secondary)] mt-1">
+                    <CardDescription className="text-muted-foreground mt-1">
                       {integration.description}
                     </CardDescription>
                   </div>
 
-                  <p className="text-xs text-[var(--color-text-muted)]">
+                  <p className="text-xs text-muted-foreground">
                     Data: {integration.dataTypes}
                   </p>
                 </CardContent>
@@ -169,8 +169,8 @@ export default function Connections() {
                   <Button
                     className={`w-full cursor-pointer duration-300 ${
                       isConnected
-                        ? 'bg-[var(--color-surface-hover)] hover:bg-[var(--color-background-secondary)] hover:text-[var(--color-text-primary)] text-[var(--color-text-primary)] border border-[var(--color-border)]'
-                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
+                        ? 'bg-accent hover:bg-muted hover:text-foreground text-foreground border border-border'
+                        : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                     }`}
                     variant={isConnected ? "outline" : "default"}
                   >
@@ -185,41 +185,41 @@ export default function Connections() {
 
       {/* Active connections table */}
       <div>
-        <h3 className="text-[var(--color-text-primary)] mb-4 text-xl font-semibold">Active Connections</h3>
-        <Card className="bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden">
+        <h3 className="text-foreground mb-4 text-xl font-semibold">Active Connections</h3>
+        <Card className="bg-card border border-border overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-background-secondary)]/50">
-                    <th className="text-left px-6 py-4 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Linked Project
                     </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Last Sync
                     </th>
-                    <th className="text-right px-6 py-4 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                    <th className="text-right px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--color-border)]">
+                <tbody className="divide-y divide-border">
                   {activeConnections.map((connection) => (
                     <tr
                       key={connection.id}
-                      className="hover:bg-[var(--color-surface-hover)] transition-colors"
+                      className="hover:bg-accent transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] text-sm border border-[var(--color-border)]">
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-foreground text-sm border border-border">
                           {connection.type === 'Repository' ? (
                             <GitBranch size={14} />
                           ) : (
@@ -228,22 +228,22 @@ export default function Connections() {
                           {connection.type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-[var(--color-text-primary)]">
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">
                         {connection.name}
                       </td>
-                      <td className="px-6 py-4 text-sm text-[var(--color-text-secondary)]">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {connection.project}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(connection.status)}</td>
-                      <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {connection.lastSync}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
                             <RefreshCw size={16} />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
                             <Settings size={16} />
                           </Button>
                         </div>

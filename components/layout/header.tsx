@@ -4,6 +4,7 @@ import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import UserMenu from '@/components/layout/user-menu';
+import { ModeToggle } from '../mode-toggle';
 import { ProjectSelector } from '@/components/ui/project-selector';
 
 export function Header() {
@@ -19,20 +20,25 @@ export function Header() {
     return 'Dashboard';
   };
 
-
-
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-white/10 bg-[#0f1115] flex items-center justify-between px-8">
-      <h1 className="text-xl font-semibold text-white">{getTitle()}</h1>
+    <header className="sticky top-0 z-30 h-16 border-b border-border bg-background flex items-center justify-between px-8">
+      <h1 className="text-xl font-semibold text-foreground">{getTitle()}</h1>
 
       <div className="flex items-center gap-6">
         {/* Project Selector */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+          <span>Project:</span>
+          <span className="text-foreground font-medium">Project: Saturn</span>
+          <ChevronDown size={16} />
+        </div>
         <ProjectSelector />
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white hover:bg-white/5">
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-accent">
           <Bell size={20} />
         </Button>
+
+        <ModeToggle/>
 
         {/* User Profile */}
         <UserMenu />
