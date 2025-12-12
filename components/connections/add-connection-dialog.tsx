@@ -9,15 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
-import { GitBranch, Trello, ArrowRight, Plus, ArrowLeft, Check } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { GitBranch, Trello, ArrowRight, Plus, ArrowLeft } from "lucide-react"
 
 export function AddConnectionDialog({ className }: { className?: string }) {
   const [step, setStep] = useState<"choice" | "form">("choice")

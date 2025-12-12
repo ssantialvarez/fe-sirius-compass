@@ -23,7 +23,7 @@ export function UserMenu({ user: userProp }: UserMenuProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 border border-white/20 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-white/20"
+          className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 border border-border overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-ring"
           title={u?.name || "Account"}
         >
           <Avatar>
@@ -44,13 +44,13 @@ export function UserMenu({ user: userProp }: UserMenuProps) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <a href="/settings" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-popover/10">
+          <a href="/settings" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">
             Settings
           </a>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <a href="/auth/logout" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-popover/10">
+          <a href="/auth/logout" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">
             Sign out
           </a>
         </DropdownMenuItem>
