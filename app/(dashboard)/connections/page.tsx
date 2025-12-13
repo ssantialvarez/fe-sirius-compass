@@ -1,11 +1,12 @@
 'use client';
-import { Database, GitBranch, Trello, Plus, Settings, RefreshCw, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Database, GitBranch, Trello } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
+import { ConnectionsTable } from '@/components/connections/connections-table';
 import { HttpService } from '@/lib/service';
 import { useEffect, useState } from 'react';
 import { Connection } from '@/lib/types';
+import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
 
 export default function Connections() {
   const integrationTypes = [
@@ -43,34 +44,6 @@ export default function Connections() {
       };
       fetchConnections();
     }, []);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return (
-          <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-1/20 text-chart-1 text-xs">
-            <CheckCircle size={12} />
-            Active
-          </span>
-        );
-      case 'syncing':
-        return (
-          <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-4/20 text-chart-4 text-xs">
-            <Loader size={12} className="animate-spin" />
-            Syncing
-          </span>
-        );
-      case 'error':
-        return (
-          <span className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive text-xs">
-            <XCircle size={12} />
-            Error
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className="space-y-8 p-8">
@@ -156,75 +129,7 @@ export default function Connections() {
       {/* Active connections table */}
       <div>
         <h3 className="text-foreground mb-4 text-xl font-semibold">Active Connections</h3>
-        <Card className="bg-card border border-border overflow-hidden">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Linked Project
-                    </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Last Sync
-                    </th>
-                    <th className="text-right px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {activeConnections.map((connection) => (
-                    <tr
-                      key={connection.id}
-                      className="hover:bg-accent transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-foreground text-sm border border-border">
-                          {connection.type === 'Repository' ? (
-                            <GitBranch size={14} />
-                          ) : (
-                            <Trello size={14} />
-                          )}
-                          {connection.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">
-                        {connection.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {connection.project}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(connection.status)}</td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {connection.lastSync}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
-                            <RefreshCw size={16} />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
-                            <Settings size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <ConnectionsTable data={activeConnections} />
       </div>
     </div>
   );
