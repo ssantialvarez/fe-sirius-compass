@@ -1,4 +1,4 @@
-import { Connection, Project } from "@/lib/types";
+import { Connection, Project, Conversation, Message } from "@/lib/types";
 
 export class HttpService {
   static async getProjects(): Promise<Project[]> {
@@ -25,6 +25,32 @@ export class HttpService {
       return await response.json();
     } catch (error) {
       console.error('Error fetching connections:', error);
+      return [];
+    }
+  }
+
+  static async getConversations(): Promise<Conversation[]> {
+    try {
+      const response = await fetch('/api/chat/conversations');
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversations');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      return [];
+    }
+  }
+
+  static async getChatMessages(chatId: number): Promise<Message[]> {
+    try {
+      const response = await fetch(`/api/chat/${chatId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat messages');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
       return [];
     }
   }

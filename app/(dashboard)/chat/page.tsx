@@ -1,60 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Calendar, Users, TrendingUp, Clock } from 'lucide-react';
-import { Message } from '@/lib/types';
+import { Message, Conversation } from '@/lib/types';
 import { ChatBubble } from '@/components/chat/chat-bubble';
+import { HttpService } from '@/lib/service';
 
 export default function AnalysisChat() {
   const [input, setInput] = useState('');
   const [scope, setScope] = useState('project');
   const [timeRange, setTimeRange] = useState('sprint');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
-  const conversations = [
-    { id: 1, title: 'Sprint 34 – Retro analysis', time: '2 hours ago' },
-    { id: 2, title: 'Squad Alpha – Performance', time: '1 day ago' },
-    { id: 3, title: 'Dev coaching – Chen', time: '3 days ago' },
-    { id: 4, title: 'Velocity trends Q4', time: '1 week ago' },
-  ];
+  useEffect(() => {
+    const loadConversations = async () => {
+      setIsLoadingConversations(true);
+      const data = await HttpService.getConversations();
+      setConversations(data);
+      setIsLoadingConversations(false);
+      
+      if (data.length > 0) {
+        handleConversationClick(data[0].id);
+      }
+    };
+    loadConversations();
+  }, []);
 
-  const chatMessages: Message[] = [
-    {
-      id: 1,
-      type: 'user',
-      content: 'How is Squad Alpha performing this sprint?',
-    },
-    {
-      id: 2,
-      type: 'ai',
-      content:
-        'Squad Alpha is performing well this sprint. Here\'s a summary of their key metrics:',
-      hasChart: true,
-      chartData: [
-        { day: 'Mon', velocity: 8 },
-        { day: 'Tue', velocity: 12 },
-        { day: 'Wed', velocity: 15 },
-        { day: 'Thu', velocity: 18 },
-        { day: 'Fri', velocity: 22 },
-      ],
-    },
-    {
-      id: 3,
-      type: 'ai',
-      content:
-        '**Key insights:**\n\n• **Velocity**: 22 story points completed so far (on track for 45-point sprint goal)\n• **Cycle time**: Average of 2.8 days (12% improvement vs last sprint)\n• **Blockers**: Only 1 blocked item, resolved within 1 day\n• **Code reviews**: Average review time is 3.2 hours (excellent)\n\nThe team is maintaining consistent delivery pace and collaboration is strong.',
-    },
-    {
-      id: 4,
-      type: 'user',
-      content: 'What about code review latency across all squads?',
-    },
-    {
-      id: 5,
-      type: 'ai',
-      content:
-        'Code review latency varies across squads. Here\'s the breakdown:\n\n• **Squad Alpha**: 3.2 hours (excellent)\n• **Squad Beta**: 5.8 hours (acceptable)\n• **Squad Gamma**: 9.4 hours (needs attention)\n\n**Recommendation**: Squad Gamma may benefit from reviewing their PR process or adding more reviewers to distribute the load.',
-    },
-  ];
+  const handleConversationClick = async (id: number) => {
+    setActiveConversationId(id);
+    setIsLoadingMessages(true);
+    const data = await HttpService.getChatMessages(id);
+    setMessages(data);
+    setIsLoadingMessages(false);
+  };
 
   const quickActions = [
     { label: 'Velocity trend', icon: TrendingUp },
@@ -68,6 +50,8 @@ export default function AnalysisChat() {
     }
   };
 
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
+
   return (
     <div className="h-full flex gap-6">
       {/* Left sidebar - Conversations */}
@@ -79,21 +63,26 @@ export default function AnalysisChat() {
           </button>
         </div>
         <div className="space-y-2">
-          {conversations.map((conv, index) => (
-            <button
-              key={conv.id}
-              className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
-                index === 0
-                  ? 'bg-primary/20 border border-primary/30'
-                  : 'hover:bg-accent'
-              }`}
-            >
-              <p className="text-sm text-foreground mb-1 line-clamp-2">
-                {conv.title}
-              </p>
-              <p className="text-xs text-muted-foreground">{conv.time}</p>
-            </button>
-          ))}
+          {isLoadingConversations ? (
+            <div className="text-sm text-muted-foreground p-2">Loading...</div>
+          ) : (
+            conversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => handleConversationClick(conv.id)}
+                className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
+                  activeConversationId === conv.id
+                    ? 'bg-primary/20 border border-primary/30'
+                    : 'hover:bg-accent'
+                }`}
+              >
+                <p className="text-sm text-foreground mb-1 line-clamp-2">
+                  {conv.title}
+                </p>
+                <p className="text-xs text-muted-foreground">{conv.time}</p>
+              </button>
+            ))
+          )}
         </div>
       </div>
 
@@ -104,7 +93,7 @@ export default function AnalysisChat() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <h3 className="text-foreground">
-                Squad Alpha – Performance
+                {activeConversation ? activeConversation.title : 'Select a conversation'}
               </h3>
               <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm">
                 AI Assistant
@@ -144,9 +133,15 @@ export default function AnalysisChat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {chatMessages.map((message) => (
-            <ChatBubble key={message.id} message={message} />
-          ))}
+          {isLoadingMessages ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Loading messages...
+            </div>
+          ) : (
+            messages.map((message) => (
+              <ChatBubble key={message.id} message={message} />
+            ))
+          )}
         </div>
 
         {/* Input area */}

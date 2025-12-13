@@ -19,3 +19,9 @@ export interface Message {
   hasChart?: boolean;
   chartData?: any[];
 }
+
+export interface Conversation {
+  id: number;
+  title: string;
+  time: string;
+}
