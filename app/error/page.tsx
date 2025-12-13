@@ -11,18 +11,18 @@ export default function Page({ searchParams }: { searchParams?: Record<string, s
     <main className="min-h-screen flex items-center justify-center p-6">
       <Card className="max-w-xl w-full">
         <CardHeader>
-          <CardTitle>{isAuthError ? "Acceso denegado" : "Ocurrió un error"}</CardTitle>
+          <CardTitle>{isAuthError ? "Access Denied" : "An Error Occurred"}</CardTitle>
           <CardDescription>
             {isAuthError
-              ? "No se permiten usuarios sin el dominio @sirius.com.ar. Por favor, ingresa con una cuenta de correo @sirius.com.ar."
-              : "Ha ocurrido un error durante el proceso de autenticación. Por favor, intenta nuevamente."}
+              ? "User must have an @sirius.com.ar email address. Please sign in with an @sirius.com.ar account."
+              : "An error occurred during the authentication process. Please try again."}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <div className="flex gap-3 items-center">
             <Button variant="outline" asChild>
-              <Link href="/auth/logout">Ir al inicio</Link>
+              <Link href="/auth/logout">Back to Login</Link>
             </Button>
           </div>
         </CardContent>
