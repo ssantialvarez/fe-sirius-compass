@@ -11,3 +11,11 @@ export interface Connection {
   status: string;
   lastSync: string;
 }
+
+export interface Message {
+  id: number;
+  type: 'user' | 'ai';
+  content: string;
+  hasChart?: boolean;
+  chartData?: any[];
+}

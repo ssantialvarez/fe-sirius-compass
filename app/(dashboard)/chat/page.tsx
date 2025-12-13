@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Send, Calendar, Users, TrendingUp, Clock } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Message } from '@/lib/types';
+import { ChatBubble } from '@/components/chat/chat-bubble';
 
 export default function AnalysisChat() {
   const [input, setInput] = useState('');
@@ -16,7 +17,7 @@ export default function AnalysisChat() {
     { id: 4, title: 'Velocity trends Q4', time: '1 week ago' },
   ];
 
-  const chatMessages = [
+  const chatMessages: Message[] = [
     {
       id: 1,
       type: 'user',
@@ -144,68 +145,7 @@ export default function AnalysisChat() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {chatMessages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-3xl ${
-                  message.type === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-6 py-4'
-                    : 'space-y-4'
-                }`}
-              >
-                {message.type === 'ai' && (
-                  <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-6 py-4">
-                    <p className="text-foreground whitespace-pre-line">
-                      {message.content}
-                    </p>
-                  </div>
-                )}
-
-                {message.type === 'user' && (
-                  <p className="whitespace-pre-line">{message.content}</p>
-                )}
-
-                {message.hasChart && message.chartData && (
-                  <div className="bg-muted border border-border rounded-xl p-6">
-                    <h4 className="text-foreground mb-4">
-                      Sprint Velocity Progress
-                    </h4>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <AreaChart data={message.chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis
-                          dataKey="day"
-                          stroke="var(--muted-foreground)"
-                          tick={{ fill: 'var(--muted-foreground)' }}
-                        />
-                        <YAxis
-                          stroke="var(--muted-foreground)"
-                          tick={{ fill: 'var(--muted-foreground)' }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--card)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '0.5rem',
-                            color: 'var(--foreground)',
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="velocity"
-                          stroke="var(--primary)"
-                          fill="var(--primary)"
-                          fillOpacity={0.3}
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ChatBubble key={message.id} message={message} />
           ))}
         </div>
 
