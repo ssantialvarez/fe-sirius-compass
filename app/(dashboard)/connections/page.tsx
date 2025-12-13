@@ -1,7 +1,11 @@
+'use client';
 import { Database, GitBranch, Trello, Plus, Settings, RefreshCw, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
+import { HttpService } from '@/lib/service';
+import { useEffect, useState } from 'react';
+import { Connection } from '@/lib/types';
 
 export default function Connections() {
   const integrationTypes = [
@@ -30,49 +34,15 @@ export default function Connections() {
       status: 'not-connected',
     },
   ];
-
-  const activeConnections = [
-    {
-      id: 1,
-      type: 'Repository',
-      name: 'main-backend-api',
-      project: 'Project Alpha',
-      status: 'active',
-      lastSync: '2 minutes ago',
-    },
-    {
-      id: 2,
-      type: 'Repository',
-      name: 'frontend-web-app',
-      project: 'Project Alpha',
-      status: 'active',
-      lastSync: '5 minutes ago',
-    },
-    {
-      id: 3,
-      type: 'Board',
-      name: 'Alpha Sprint Board',
-      project: 'Project Alpha',
-      status: 'syncing',
-      lastSync: 'Syncing now',
-    },
-    {
-      id: 4,
-      type: 'Repository',
-      name: 'mobile-app-ios',
-      project: 'Project Beta',
-      status: 'error',
-      lastSync: '2 hours ago',
-    },
-    {
-      id: 5,
-      type: 'Board',
-      name: 'Beta Kanban',
-      project: 'Project Beta',
-      status: 'active',
-      lastSync: '8 minutes ago',
-    },
-  ];
+  const [activeConnections, setConnections] = useState([] as Connection[]);
+  
+    useEffect(() => {
+      const fetchConnections = async () => {
+        const data = await HttpService.getConnections();
+        setConnections(data);
+      };
+      fetchConnections();
+    }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
