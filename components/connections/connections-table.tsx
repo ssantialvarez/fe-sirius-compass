@@ -9,5 +9,11 @@ interface ConnectionsTableProps {
 }
 
 export function ConnectionsTable({ data }: ConnectionsTableProps) {
-  return <DataTable columns={columns} data={data} />
+  return (
+    <DataTable
+      columns={columns}
+      data={data}
+      emptyMessage="No connections found."
+    />
+  )
 }
