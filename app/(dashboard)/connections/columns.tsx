@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 export const columns: ColumnDef<Connection>[] = [
   {
     accessorKey: "type",
-    header: "Type",
+    header: () => <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</div>,
     cell: ({ row }) => {
       const type = row.getValue("type") as string
       return (
@@ -25,21 +25,21 @@ export const columns: ColumnDef<Connection>[] = [
   },
   {
     accessorKey: "name",
-    header: "Name",
+    header: () => <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</div>,
     cell: ({ row }) => {
       return <div className="text-sm font-medium text-foreground">{row.getValue("name")}</div>
     },
   },
   {
     accessorKey: "project",
-    header: "Linked Project",
+    header: () => <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Linked Project</div>,
     cell: ({ row }) => {
       return <div className="text-sm text-muted-foreground">{row.getValue("project")}</div>
     },
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: () => <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</div>,
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       
@@ -72,14 +72,14 @@ export const columns: ColumnDef<Connection>[] = [
   },
   {
     accessorKey: "lastSync",
-    header: "Last Sync",
+    header: () => <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Sync</div>,
     cell: ({ row }) => {
       return <div className="text-sm text-muted-foreground">{row.getValue("lastSync")}</div>
     },
   },
   {
     id: "actions",
-    header: () => <div className="text-right">Actions</div>,
+    header: () => <div className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</div>,
     cell: ({ row }) => {
       return (
         <div className="flex items-center justify-end gap-2">
