@@ -4,11 +4,25 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Connection } from "@/lib/types"
 import { GitBranch, Trello, RefreshCw, Settings, CheckCircle, Loader, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+
+interface TableHeaderProps {
+  children: React.ReactNode
+  className?: string
+}
+
+function TableHeader({ children, className }: TableHeaderProps) {
+  return (
+    <div className={cn("text-xs font-medium text-muted-foreground uppercase tracking-wider", className)}>
+      {children}
+    </div>
+  )
+}
 
 export const columns: ColumnDef<Connection>[] = [
   {
     accessorKey: "type",
-    header: "Type",
+    header: () => <TableHeader>Type</TableHeader>,
     cell: ({ row }) => {
       const type = row.getValue("type") as string
       return (
@@ -25,21 +39,21 @@ export const columns: ColumnDef<Connection>[] = [
   },
   {
     accessorKey: "name",
-    header: "Name",
+    header: () => <TableHeader>Name</TableHeader>,
     cell: ({ row }) => {
       return <div className="text-sm font-medium text-foreground">{row.getValue("name")}</div>
     },
   },
   {
     accessorKey: "project",
-    header: "Linked Project",
+    header: () => <TableHeader>Linked Project</TableHeader>,
     cell: ({ row }) => {
       return <div className="text-sm text-muted-foreground">{row.getValue("project")}</div>
     },
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: () => <TableHeader>Status</TableHeader>,
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       
@@ -72,14 +86,14 @@ export const columns: ColumnDef<Connection>[] = [
   },
   {
     accessorKey: "lastSync",
-    header: "Last Sync",
+    header: () => <TableHeader>Last Sync</TableHeader>,
     cell: ({ row }) => {
       return <div className="text-sm text-muted-foreground">{row.getValue("lastSync")}</div>
     },
   },
   {
     id: "actions",
-    header: () => <div className="text-right">Actions</div>,
+    header: () => <TableHeader className="text-right">Actions</TableHeader>,
     cell: ({ row }) => {
       return (
         <div className="flex items-center justify-end gap-2">
