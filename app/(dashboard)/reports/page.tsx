@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<number | null>(null);
@@ -79,19 +83,19 @@ export default function Reports() {
     switch (status) {
       case 'healthy':
         return (
-          <span className="px-3 py-1 rounded-full bg-[var(--color-success)]/20 text-[var(--color-success)] text-sm">
+          <span className="px-3 py-1 rounded-full bg-chart-2/20 text-chart-2 text-sm">
             Healthy
           </span>
         );
       case 'watch':
         return (
-          <span className="px-3 py-1 rounded-full bg-[var(--color-warning)]/20 text-[var(--color-warning)] text-sm">
+          <span className="px-3 py-1 rounded-full bg-chart-4/20 text-chart-4 text-sm">
             Watch
           </span>
         );
       case 'at-risk':
         return (
-          <span className="px-3 py-1 rounded-full bg-[var(--color-danger)]/20 text-[var(--color-danger)] text-sm">
+          <span className="px-3 py-1 rounded-full bg-destructive/20 text-destructive text-sm">
             At Risk
           </span>
         );
@@ -101,191 +105,207 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-8">
       {/* Filters */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <Filter size={20} className="text-[var(--color-text-secondary)]" />
-          <h3 className="text-[var(--color-text-primary)]">Filters</h3>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm text-[var(--color-text-secondary)]">Squad / Team</label>
-            <select className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] cursor-pointer">
-              <option>All squads</option>
-              <option>Squad Alpha</option>
-              <option>Squad Beta</option>
-              <option>Squad Gamma</option>
-            </select>
+      <Card className="bg-card border-border">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <Filter size={20} className="text-muted-foreground" />
+            <h3 className="text-foreground font-medium">Filters</h3>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-[var(--color-text-secondary)]">Time Range</label>
-            <select className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] cursor-pointer">
-              <option>Last 3 months</option>
-              <option>Last 6 months</option>
-              <option>Last year</option>
-              <option>Custom</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Squad / Team</Label>
+              <Select defaultValue="all">
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select squad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All squads</SelectItem>
+                  <SelectItem value="alpha">Squad Alpha</SelectItem>
+                  <SelectItem value="beta">Squad Beta</SelectItem>
+                  <SelectItem value="gamma">Squad Gamma</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Time Range</Label>
+              <Select defaultValue="3months">
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3months">Last 3 months</SelectItem>
+                  <SelectItem value="6months">Last 6 months</SelectItem>
+                  <SelectItem value="year">Last year</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Status</Label>
+              <Select defaultValue="all">
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="healthy">Healthy</SelectItem>
+                  <SelectItem value="watch">Watch</SelectItem>
+                  <SelectItem value="at-risk">At Risk</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-[var(--color-text-secondary)]">Status</label>
-            <select className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] cursor-pointer">
-              <option>All statuses</option>
-              <option>Healthy</option>
-              <option>Watch</option>
-              <option>At Risk</option>
-            </select>
+          <div className="flex gap-3 mt-6">
+            <Button>Apply Filters</Button>
+            <Button variant="outline">Clear</Button>
           </div>
-        </div>
-
-        <div className="flex gap-3 mt-4">
-          <button className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors">
-            Apply Filters
-          </button>
-          <button className="px-4 py-2 bg-[var(--color-surface-hover)] hover:bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] rounded-lg border border-[var(--color-border)] transition-colors">
-            Clear
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Reports list */}
       <div className="grid grid-cols-1 gap-4">
         {reports.map((report) => (
-          <div
+          <Card
             key={report.id}
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 hover:border-[var(--color-border-hover)] transition-all"
+            className="bg-card border-border hover:border-primary/50 transition-all"
           >
-            <div className="flex items-center justify-between">
+            <CardContent className="p-6 flex items-center justify-between">
               <div className="flex items-center gap-6 flex-1">
-                <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                <div className="flex items-center gap-2 text-muted-foreground min-w-[140px]">
                   <Calendar size={16} />
                   <span className="text-sm">{report.week}</span>
                 </div>
 
-                <div className="flex flex-col">
-                  <span className="text-sm text-[var(--color-text-secondary)]">
+                <div className="flex flex-col min-w-[120px]">
+                  <span className="text-sm text-muted-foreground">
                     {report.sprint}
                   </span>
-                  <h4 className="text-[var(--color-text-primary)]">{report.squad}</h4>
+                  <h4 className="text-foreground font-medium">{report.squad}</h4>
                 </div>
 
-                <div>{getStatusBadge(report.status)}</div>
+                <div className="min-w-[100px]">{getStatusBadge(report.status)}</div>
 
-                <p className="text-[var(--color-text-secondary)] flex-1">{report.summary}</p>
+                <p className="text-muted-foreground flex-1 truncate">{report.summary}</p>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   onClick={() => setSelectedReport(selectedReport === report.id ? null : report.id)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors"
+                  variant={selectedReport === report.id ? "default" : "secondary"}
+                  className="gap-2"
                 >
                   <Eye size={16} />
-                  View
-                </button>
-                <button className="p-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors">
+                  {selectedReport === report.id ? 'Close' : 'View'}
+                </Button>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <Download size={18} />
-                </button>
+                </Button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {/* Detail panel */}
       {selectedReport && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-primary)]/30 rounded-xl p-8 space-y-8">
-          <div className="flex items-center justify-between">
+        <Card className="bg-card border-primary/30 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <h2 className="text-[var(--color-text-primary)] mb-2">
+              <CardTitle className="text-foreground mb-2">
                 Weekly Report Details
-              </h2>
-              <p className="text-[var(--color-text-secondary)]">
+              </CardTitle>
+              <p className="text-muted-foreground text-sm">
                 {reports.find((r) => r.id === selectedReport)?.week} •{' '}
                 {reports.find((r) => r.id === selectedReport)?.squad}
               </p>
             </div>
-            <button
+            <Button
               onClick={() => setSelectedReport(null)}
-              className="px-4 py-2 bg-[var(--color-surface-hover)] hover:bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] rounded-lg border border-[var(--color-border)] transition-colors"
+              variant="outline"
             >
               Close
-            </button>
-          </div>
+            </Button>
+          </CardHeader>
+          
+          <CardContent className="space-y-8 pt-6">
+            {/* Summary */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ChevronRight size={20} className="text-primary" />
+                <h3 className="text-foreground font-medium">Summary</h3>
+              </div>
+              <p className="text-muted-foreground pl-7">{reportDetail.summary}</p>
+            </div>
 
-          {/* Summary */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <ChevronRight size={20} className="text-[var(--color-primary)]" />
-              <h3 className="text-[var(--color-text-primary)]">Summary</h3>
+            {/* Key Metrics */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <ChevronRight size={20} className="text-primary" />
+                <h3 className="text-foreground font-medium">Key Metrics</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pl-7">
+                {reportDetail.keyMetrics.map((metric) => (
+                  <div
+                    key={metric.name}
+                    className="bg-muted/50 border border-border rounded-lg p-4"
+                  >
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {metric.name}
+                    </p>
+                    <p className="text-xl text-foreground font-semibold mb-2">
+                      {metric.value}
+                    </p>
+                    <span className="text-xs text-chart-2 font-medium">{metric.change}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-[var(--color-text-secondary)] pl-7">{reportDetail.summary}</p>
-          </div>
 
-          {/* Key Metrics */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <ChevronRight size={20} className="text-[var(--color-primary)]" />
-              <h3 className="text-[var(--color-text-primary)]">Key Metrics</h3>
+            {/* Risks & Alerts */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ChevronRight size={20} className="text-primary" />
+                <h3 className="text-foreground font-medium">Risks & Alerts</h3>
+              </div>
+              <div className="pl-7 space-y-2">
+                {reportDetail.risks.map((risk, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20"
+                  >
+                    <AlertCircle size={18} className="text-chart-2 mt-0.5" />
+                    <p className="text-muted-foreground">{risk}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-4 gap-4 pl-7">
-              {reportDetail.keyMetrics.map((metric) => (
-                <div
-                  key={metric.name}
-                  className="bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-lg p-4"
-                >
-                  <p className="text-sm text-[var(--color-text-secondary)] mb-1">
-                    {metric.name}
-                  </p>
-                  <p className="text-xl text-[var(--color-text-primary)] mb-2">
-                    {metric.value}
-                  </p>
-                  <span className="text-xs text-[var(--color-success)]">{metric.change}</span>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Risks & Alerts */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <ChevronRight size={20} className="text-[var(--color-primary)]" />
-              <h3 className="text-[var(--color-text-primary)]">Risks & Alerts</h3>
+            {/* Coaching Tips */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ChevronRight size={20} className="text-primary" />
+                <h3 className="text-foreground font-medium">Suggested Coaching Tips</h3>
+              </div>
+              <ul className="pl-7 space-y-2">
+                {reportDetail.coaching.map((tip, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start gap-3 text-muted-foreground"
+                  >
+                    <span className="text-primary mt-1">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="pl-7 space-y-2">
-              {reportDetail.risks.map((risk, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-[var(--color-success)]/10 border border-[var(--color-success)]/20"
-                >
-                  <AlertCircle size={18} className="text-[var(--color-success)] mt-0.5" />
-                  <p className="text-[var(--color-text-secondary)]">{risk}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Coaching Tips */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <ChevronRight size={20} className="text-[var(--color-primary)]" />
-              <h3 className="text-[var(--color-text-primary)]">Suggested Coaching Tips</h3>
-            </div>
-            <ul className="pl-7 space-y-2">
-              {reportDetail.coaching.map((tip, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-3 text-[var(--color-text-secondary)]"
-                >
-                  <span className="text-[var(--color-primary)] mt-1">•</span>
-                  <span>{tip}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

@@ -1,6 +1,11 @@
 'use client';
 import { User, Bell, Briefcase, Save } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Settings() {
   const [profile, setProfile] = useState({
@@ -22,70 +27,70 @@ export default function Settings() {
   });
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-4xl space-y-8 p-8">
       {/* Profile Settings */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <User size={20} className="text-[var(--color-primary)]" />
-          <h3 className="text-[var(--color-text-primary)]">Profile Settings</h3>
-        </div>
-
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+          <User size={20} className="text-primary" />
+          <CardTitle className="text-foreground text-lg">Profile Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm text-[var(--color-text-secondary)]">Full Name</label>
-              <input
+              <Label className="text-muted-foreground">Full Name</Label>
+              <Input
                 type="text"
                 value={profile.name}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:outline-none transition-colors"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-[var(--color-text-secondary)]">Email</label>
-              <input
+              <Label className="text-muted-foreground">Email</Label>
+              <Input
                 type="email"
                 value={profile.email}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:outline-none transition-colors"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-[var(--color-text-secondary)]">Role</label>
-            <select
-              value={profile.role}
-              onChange={(e) => setProfile({ ...profile, role: e.target.value })}
-              className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] cursor-pointer"
+            <Label className="text-muted-foreground">Role</Label>
+            <Select 
+              value={profile.role} 
+              onValueChange={(value) => setProfile({ ...profile, role: value })}
             >
-              <option>Project Manager</option>
-              <option>Engineering Manager</option>
-              <option>Tech Lead</option>
-              <option>Developer</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Project Manager">Project Manager</SelectItem>
+                <SelectItem value="Engineering Manager">Engineering Manager</SelectItem>
+                <SelectItem value="Tech Lead">Tech Lead</SelectItem>
+                <SelectItem value="Developer">Developer</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors">
+          <Button className="gap-2 mt-2">
             <Save size={16} />
             Save Profile
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Notification Preferences */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Bell size={20} className="text-[var(--color-primary)]" />
-          <h3 className="text-[var(--color-text-primary)]">Notification Preferences</h3>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--color-background-secondary)] border border-[var(--color-border)]">
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+          <Bell size={20} className="text-primary" />
+          <CardTitle className="text-foreground text-lg">Notification Preferences</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
             <div>
-              <p className="text-[var(--color-text-primary)] mb-1">Weekly Reports Email</p>
-              <p className="text-sm text-[var(--color-text-muted)]">
+              <p className="text-foreground font-medium mb-1">Weekly Reports Email</p>
+              <p className="text-sm text-muted-foreground">
                 Receive weekly summary reports every Monday
               </p>
             </div>
@@ -98,14 +103,14 @@ export default function Settings() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-[var(--color-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+              <div className="w-11 h-6 bg-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--color-background-secondary)] border border-[var(--color-border)]">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
             <div>
-              <p className="text-[var(--color-text-primary)] mb-1">Blocked Work Alerts</p>
-              <p className="text-sm text-[var(--color-text-muted)]">
+              <p className="text-foreground font-medium mb-1">Blocked Work Alerts</p>
+              <p className="text-sm text-muted-foreground">
                 Get notified when tasks are blocked for more than 24 hours
               </p>
             </div>
@@ -118,14 +123,14 @@ export default function Settings() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-[var(--color-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+              <div className="w-11 h-6 bg-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--color-background-secondary)] border border-[var(--color-border)]">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
             <div>
-              <p className="text-[var(--color-text-primary)] mb-1">Velocity Alerts</p>
-              <p className="text-sm text-[var(--color-text-muted)]">
+              <p className="text-foreground font-medium mb-1">Velocity Alerts</p>
+              <p className="text-sm text-muted-foreground">
                 Alert when velocity changes by more than 20%
               </p>
             </div>
@@ -138,14 +143,14 @@ export default function Settings() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-[var(--color-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+              <div className="w-11 h-6 bg-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--color-background-secondary)] border border-[var(--color-border)]">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
             <div>
-              <p className="text-[var(--color-text-primary)] mb-1">Performance Insights</p>
-              <p className="text-sm text-[var(--color-text-muted)]">
+              <p className="text-foreground font-medium mb-1">Performance Insights</p>
+              <p className="text-sm text-muted-foreground">
                 Receive AI-generated insights and recommendations
               </p>
             </div>
@@ -161,67 +166,70 @@ export default function Settings() {
                 }
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-[var(--color-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+              <div className="w-11 h-6 bg-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors">
+          <Button className="gap-2 mt-2">
             <Save size={16} />
             Save Preferences
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Workspace Settings */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Briefcase size={20} className="text-[var(--color-primary)]" />
-          <h3 className="text-[var(--color-text-primary)]">Workspace Settings</h3>
-        </div>
-
-        <div className="space-y-4">
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+          <Briefcase size={20} className="text-primary" />
+          <CardTitle className="text-foreground text-lg">Workspace Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
           <div className="space-y-2">
-            <label className="text-sm text-[var(--color-text-secondary)]">
+            <Label className="text-muted-foreground">
               Default Project
-            </label>
-            <select
-              value={workspace.defaultProject}
-              onChange={(e) =>
-                setWorkspace({ ...workspace, defaultProject: e.target.value })
-              }
-              className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] cursor-pointer"
+            </Label>
+            <Select 
+              value={workspace.defaultProject} 
+              onValueChange={(value) => setWorkspace({ ...workspace, defaultProject: value })}
             >
-              <option>Project Alpha</option>
-              <option>Project Beta</option>
-              <option>Project Gamma</option>
-              <option>Project Delta</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Project Alpha">Project Alpha</SelectItem>
+                <SelectItem value="Project Beta">Project Beta</SelectItem>
+                <SelectItem value="Project Gamma">Project Gamma</SelectItem>
+                <SelectItem value="Project Delta">Project Delta</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-[var(--color-text-secondary)]">
+            <Label className="text-muted-foreground">
               Default Time Range
-            </label>
-            <select
-              value={workspace.defaultTimeRange}
-              onChange={(e) =>
-                setWorkspace({ ...workspace, defaultTimeRange: e.target.value })
-              }
-              className="w-full bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] cursor-pointer"
+            </Label>
+            <Select 
+              value={workspace.defaultTimeRange} 
+              onValueChange={(value) => setWorkspace({ ...workspace, defaultTimeRange: value })}
             >
-              <option>Last 4 weeks</option>
-              <option>Last 8 weeks</option>
-              <option>Last quarter</option>
-              <option>This sprint</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Last 4 weeks">Last 4 weeks</SelectItem>
+                <SelectItem value="Last 8 weeks">Last 8 weeks</SelectItem>
+                <SelectItem value="Last quarter">Last quarter</SelectItem>
+                <SelectItem value="This sprint">This sprint</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg transition-colors">
+          <Button className="gap-2 mt-2">
             <Save size={16} />
             Save Settings
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
