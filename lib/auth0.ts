@@ -6,10 +6,10 @@ export const auth0 = new Auth0Client({
   authorizationParameters: {
     redirect_uri: `${process.env.APP_BASE_URL}/auth/callback`,
     audience: process.env.AUTH0_AUDIENCE,
-    scope: 'openid profile email offline_access', 
+    scope: 'openid profile email offline_access',
   },
   allowInsecureRequests: true,
-   async onCallback(error, context, session) {
+  async onCallback(error, context, session) {
     if (error) {
       console.error('Authentication error:', error);
       return NextResponse.redirect(
@@ -46,7 +46,17 @@ const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
  * ```
  */
 export async function createBackendFetcher() {
-  return auth0.createFetcher(undefined, {
-    baseUrl: backendUrl
-  });
+  const { token } = await auth0.getAccessToken();
+
+  return {
+    fetchWithAuth: async (url: string, init?: RequestInit) => {
+      return fetch(`${backendUrl}${url}`, {
+        ...init,
+        headers: {
+          ...init?.headers,
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    },
+  };
 }
