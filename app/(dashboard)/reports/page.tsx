@@ -170,7 +170,12 @@ export default function Reports() {
 
                   <div className="flex flex-col min-w-[160px]">
                     <span className="text-sm text-muted-foreground">{report.repository}</span>
-                    <h4 className="text-foreground font-medium">{report.project}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-foreground font-medium">{report.project}</h4>
+                      <span className="px-1.5 py-0.5 rounded-md bg-secondary/50 text-secondary-foreground text-[10px] font-medium border border-border">
+                        Project
+                      </span>
+                    </div>
                   </div>
 
                   <div className="min-w-[100px]">{getStatusBadge(report.status)}</div>
