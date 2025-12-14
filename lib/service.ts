@@ -46,29 +46,26 @@ export class HttpService {
   }
 
   static async getChatThreads(userId?: string): Promise<ChatThread[]> {
-    try {
-      const url = new URL('/api/chat/threads', window.location.origin);
-      if (userId) url.searchParams.set('user_id', userId);
-      const response = await fetch(url.toString());
-      if (!response.ok) throw new Error('Failed to fetch chat threads');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching chat threads:', error);
-      return [];
+    const url = new URL('/api/chat/threads', window.location.origin);
+    if (userId) url.searchParams.set('user_id', userId);
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to fetch chat threads (${response.status})`);
     }
+    return await response.json();
   }
 
   static async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
-    try {
-      const url = new URL(`/api/chat/threads/${threadId}/messages`, window.location.origin);
-      url.searchParams.set('limit', String(limit));
-      const response = await fetch(url.toString());
-      if (!response.ok) throw new Error('Failed to fetch chat messages');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching chat messages:', error);
-      return [];
+    if (!threadId || threadId === 'undefined') return [];
+    const url = new URL(`/api/chat/threads/${threadId}/messages`, window.location.origin);
+    url.searchParams.set('limit', String(limit));
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to fetch chat messages (${response.status})`);
     }
+    return await response.json();
   }
 
   static async getReports(projectName?: string, limit = 50): Promise<Report[]> {

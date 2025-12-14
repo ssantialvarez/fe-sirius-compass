@@ -43,6 +43,7 @@ export default function Connections() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchConnections();
   }, []);
 

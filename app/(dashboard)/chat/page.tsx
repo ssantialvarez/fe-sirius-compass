@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
 import { Send, Calendar, Users, TrendingUp, Clock, Loader2 } from 'lucide-react';
 import { HttpService } from '@/lib/service';
@@ -12,6 +12,7 @@ type UiMessage = {
   role: 'user' | 'assistant';
   content: string;
   isStreaming?: boolean;
+  createdAt?: string;
 };
 
 function createThreadId() {
@@ -19,6 +20,13 @@ function createThreadId() {
     return crypto.randomUUID();
   }
   return `thread_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function formatTimestamp(isoDate?: string) {
+  if (!isoDate) return '';
+  const dt = new Date(isoDate);
+  if (Number.isNaN(dt.getTime())) return isoDate;
+  return dt.toLocaleString();
 }
 
 function formatRelative(isoDate: string) {
@@ -44,6 +52,171 @@ async function loadProjectPrimaryRepo(projectName: string): Promise<string | nul
   return repo?.name ?? null;
 }
 
+function safeHttpUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  const patterns: Array<{
+    type: 'link' | 'bold' | 'code';
+    regex: RegExp;
+  }> = [
+    { type: 'link', regex: /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/ },
+    { type: 'bold', regex: /\*\*([^*]+)\*\*/ },
+    { type: 'code', regex: /`([^`]+)`/ },
+  ];
+
+  while (remaining.length > 0) {
+    let best:
+      | { type: 'link' | 'bold' | 'code'; match: RegExpMatchArray; index: number }
+      | null = null;
+
+    for (const pattern of patterns) {
+      const match = remaining.match(pattern.regex);
+      if (!match || match.index === undefined) continue;
+      if (!best || match.index < best.index) {
+        best = { type: pattern.type, match, index: match.index };
+      }
+    }
+
+    if (!best) {
+      nodes.push(remaining);
+      break;
+    }
+
+    if (best.index > 0) {
+      nodes.push(remaining.slice(0, best.index));
+    }
+
+    if (best.type === 'bold') {
+      nodes.push(<strong key={`b_${key++}`}>{best.match[1]}</strong>);
+    } else if (best.type === 'code') {
+      nodes.push(
+        <code
+          key={`c_${key++}`}
+          className="px-1 py-0.5 rounded bg-background/60 border border-border font-mono text-sm"
+        >
+          {best.match[1]}
+        </code>,
+      );
+    } else if (best.type === 'link') {
+      const href = safeHttpUrl(best.match[2]);
+      if (href) {
+        nodes.push(
+          <a
+            key={`l_${key++}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 text-primary"
+          >
+            {best.match[1]}
+          </a>,
+        );
+      } else {
+        nodes.push(best.match[0]);
+      }
+    }
+
+    remaining = remaining.slice(best.index + best.match[0].length);
+  }
+
+  return nodes;
+}
+
+function MarkdownText({ content }: { content: string }) {
+  const segments = content.split('```');
+  const blocks: ReactNode[] = [];
+
+  segments.forEach((segment, index) => {
+    const isCode = index % 2 === 1;
+    if (isCode) {
+      const firstNewline = segment.indexOf('\n');
+      const code = firstNewline === -1 ? segment : segment.slice(firstNewline + 1);
+      blocks.push(
+        <pre
+          key={`code_${index}`}
+          className="overflow-x-auto rounded-lg border border-border bg-background/40 p-4 text-sm"
+        >
+          <code className="font-mono whitespace-pre">{code.trimEnd()}</code>
+        </pre>,
+      );
+      return;
+    }
+
+    const lines = segment.split('\n');
+    let listBuffer: string[] = [];
+
+    const flushList = () => {
+      if (listBuffer.length === 0) return;
+      blocks.push(
+        <ul key={`ul_${index}_${blocks.length}`} className="list-disc pl-6 space-y-1">
+          {listBuffer.map((item, i) => (
+            <li key={`li_${index}_${i}`}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ul>,
+      );
+      listBuffer = [];
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trimEnd();
+
+      const listMatch = line.match(/^\s*[-*]\s+(.*)$/);
+      if (listMatch) {
+        listBuffer.push(listMatch[1]);
+        continue;
+      }
+
+      flushList();
+
+      if (!line.trim()) {
+        blocks.push(<div key={`sp_${index}_${blocks.length}`} className="h-2" />);
+        continue;
+      }
+
+      const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const text = headingMatch[2];
+        const className =
+          level === 1
+            ? 'text-lg font-semibold'
+            : level === 2
+              ? 'text-base font-semibold'
+              : 'text-sm font-semibold';
+
+        blocks.push(
+          <div key={`h_${index}_${blocks.length}`} className={className}>
+            {renderInlineMarkdown(text)}
+          </div>,
+        );
+        continue;
+      }
+
+      blocks.push(
+        <p key={`p_${index}_${blocks.length}`} className="whitespace-pre-wrap">
+          {renderInlineMarkdown(line)}
+        </p>,
+      );
+    }
+
+    flushList();
+  });
+
+  return <div className="space-y-2">{blocks}</div>;
+}
+
 export default function AnalysisChat() {
   const [input, setInput] = useState('');
   const [scope, setScope] = useState('project');
@@ -52,10 +225,13 @@ export default function AnalysisChat() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [primaryRepoName, setPrimaryRepoName] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesRequestRef = useRef(0);
+  const selectedThreadIdRef = useRef<string | null>(null);
 
   const { user } = useUser();
   const { currentProject } = useProjectStore();
@@ -75,23 +251,50 @@ export default function AnalysisChat() {
   ];
 
   const refreshThreads = async () => {
-    const data = await HttpService.getChatThreads(userId);
-    setThreads(data);
-    if (!selectedThreadId && data.length > 0) {
-      setSelectedThreadId(data[0].thread_id);
+    try {
+      const data = await HttpService.getChatThreads(userId);
+      setThreads(data);
+      setSelectedThreadId((current) => {
+        if (current && current !== 'undefined') return current;
+        return data[0]?.thread_id ?? null;
+      });
+    } catch (e) {
+      setError(String(e));
+      setThreads([]);
     }
   };
 
   const refreshMessages = async (threadId: string) => {
-    const data = await HttpService.getChatMessages(threadId);
-    const uiMessages: UiMessage[] = data
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        id: String(m.id),
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content,
-      }));
-    setMessages(uiMessages);
+    if (!threadId || threadId === 'undefined') {
+      setMessages([]);
+      return;
+    }
+
+    const requestId = ++messagesRequestRef.current;
+    setIsLoadingMessages(true);
+
+    try {
+      const data = await HttpService.getChatMessages(threadId);
+      if (messagesRequestRef.current !== requestId) return;
+
+      const uiMessages: UiMessage[] = data
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({
+          id: String(m.id),
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: m.content,
+          createdAt: m.created_at,
+        }));
+      setMessages(uiMessages);
+    } catch (e) {
+      if (messagesRequestRef.current !== requestId) return;
+      setError(String(e));
+      setMessages([]);
+    } finally {
+      if (messagesRequestRef.current === requestId) {
+        setIsLoadingMessages(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -104,8 +307,15 @@ export default function AnalysisChat() {
       setMessages([]);
       return;
     }
+    if (selectedThreadId === 'undefined') {
+      setMessages([]);
+      return;
+    }
     refreshMessages(selectedThreadId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedThreadId]);
+
+  useEffect(() => {
+    selectedThreadIdRef.current = selectedThreadId;
   }, [selectedThreadId]);
 
   useEffect(() => {
@@ -146,10 +356,12 @@ export default function AnalysisChat() {
     setInput('');
     setError(null);
 
+    const nowIso = new Date().toISOString();
     const userMessage: UiMessage = {
       id: `local_user_${Date.now()}`,
       role: 'user',
       content: text,
+      createdAt: nowIso,
     };
     const assistantId = `local_assistant_${Date.now()}`;
     const assistantMessage: UiMessage = {
@@ -157,6 +369,7 @@ export default function AnalysisChat() {
       role: 'assistant',
       content: '',
       isStreaming: true,
+      createdAt: nowIso,
     };
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
@@ -239,6 +452,9 @@ export default function AnalysisChat() {
 
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m)));
       await refreshThreads();
+      if (selectedThreadIdRef.current === threadId) {
+        await refreshMessages(threadId);
+      }
     } catch (e) {
       setError(String(e));
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m)));
@@ -333,6 +549,12 @@ export default function AnalysisChat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {isLoadingMessages && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 size={14} className="animate-spin" />
+              Loading messages...
+            </div>
+          )}
           {messages.map((message) => (
             <div
               key={message.id}
@@ -346,10 +568,13 @@ export default function AnalysisChat() {
                 }`}
               >
                 {message.role === 'assistant' && (
-                  <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-6 py-4">
-                    <p className="text-foreground whitespace-pre-line">
-                      {message.content}
-                    </p>
+                  <div
+                    className="bg-muted border border-border rounded-2xl rounded-tl-sm px-6 py-4"
+                    title={formatTimestamp(message.createdAt)}
+                  >
+                    <div className="text-foreground">
+                      <MarkdownText content={message.content} />
+                    </div>
                     {message.isStreaming && (
                       <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                         <Loader2 size={14} className="animate-spin" />
@@ -360,7 +585,9 @@ export default function AnalysisChat() {
                 )}
 
                 {message.role === 'user' && (
-                  <p className="whitespace-pre-line">{message.content}</p>
+                  <p className="whitespace-pre-line" title={formatTimestamp(message.createdAt)}>
+                    {message.content}
+                  </p>
                 )}
               </div>
             </div>
