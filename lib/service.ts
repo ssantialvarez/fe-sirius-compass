@@ -1,4 +1,4 @@
-import { Connection, Project } from "@/lib/types";
+import { ChatMessage, ChatThread, Connection, CreateConnectionPayload, Project, Report } from "@/lib/types";
 
 export class HttpService {
   static async getProjects(): Promise<Project[]> {
@@ -7,7 +7,6 @@ export class HttpService {
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }
-      await new Promise((resolve) => setTimeout(resolve, 2000));
       return await response.json();
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -21,11 +20,130 @@ export class HttpService {
       if (!response.ok) {
         throw new Error('Failed to fetch connections');
       }
-      await new Promise((resolve) => setTimeout(resolve, 2000));
       return await response.json();
     } catch (error) {
       console.error('Error fetching connections:', error);
       return [];
+    }
+  }
+
+  static async createConnection(payload: CreateConnectionPayload): Promise<Connection | null> {
+    try {
+      const response = await fetch('/api/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Failed to create connection');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating connection:', error);
+      return null;
+    }
+  }
+
+  static async getChatThreads(): Promise<ChatThread[]> {
+    const url = new URL('/api/chat/threads', window.location.origin);
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to fetch chat threads (${response.status})`);
+    }
+    return await response.json();
+  }
+
+  static async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
+    if (!threadId || threadId === 'undefined') return [];
+    const url = new URL(`/api/chat/threads/${threadId}/messages`, window.location.origin);
+    url.searchParams.set('limit', String(limit));
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to fetch chat messages (${response.status})`);
+    }
+    return await response.json();
+  }
+
+  static async deleteChatThread(threadId: string): Promise<number> {
+    try {
+      const response = await fetch(`/api/chat/threads/${threadId}`, {
+        method: 'DELETE',
+      });
+      return response.status;
+    } catch (error) {
+      console.error('Error deleting chat thread:', error);
+      return 500;
+    }
+  }
+
+  static async getReports(projectName?: string, limit = 50): Promise<Report[]> {
+    try {
+      const url = new URL('/api/reports', window.location.origin);
+      if (projectName) url.searchParams.set('project_name', projectName);
+      url.searchParams.set('limit', String(limit));
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error('Failed to fetch reports');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      return [];
+    }
+  }
+
+  static async analyzeRepository(payload: {
+    repo_url: string;
+    developer_name?: string;
+    lookback_days?: number;
+    project_name?: string;
+    linear_team_key?: string;
+    user_id?: string;
+  }): Promise<boolean> {
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Analyze request failed');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error analyzing repository:', error);
+      return false;
+    }
+  }
+  static async deleteConnection(id: number | string, type: 'Repository' | 'Board'): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/connections/${id}?type=${type}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete connection');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error deleting connection:', error);
+      return false;
+    }
+  }
+
+  static async deleteReport(id: number): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/reports/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete report');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      return false;
     }
   }
 }

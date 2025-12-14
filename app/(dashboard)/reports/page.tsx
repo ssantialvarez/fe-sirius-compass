@@ -1,107 +1,84 @@
 'use client';
 
-import { useState } from 'react';
-import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MarkdownText } from '@/components/ui/markdown-text';
+import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
 import { Label } from '@/components/ui/label';
+import { HttpService } from '@/lib/service';
+import { useProjectStore } from '@/lib/store';
+import type { Report } from '@/lib/types';
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case 'healthy':
+      return (
+        <span className="px-3 py-1 rounded-full bg-chart-2/20 text-chart-2 text-sm">
+          Healthy
+        </span>
+      );
+    case 'watch':
+      return (
+        <span className="px-3 py-1 rounded-full bg-chart-4/20 text-chart-4 text-sm">
+          Watch
+        </span>
+      );
+    case 'at-risk':
+      return (
+        <span className="px-3 py-1 rounded-full bg-destructive/20 text-destructive text-sm">
+          At Risk
+        </span>
+      );
+    default:
+      return (
+        <span className="px-3 py-1 rounded-full bg-muted/20 text-muted-foreground text-sm">
+          Unknown
+        </span>
+      );
+  }
+}
 
 export default function Reports() {
-  const [selectedReport, setSelectedReport] = useState<number | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+  const { currentProject } = useProjectStore();
 
-  const reports = [
-    {
-      id: 1,
-      week: 'Week of 2025-12-01',
-      sprint: 'Sprint 35',
-      squad: 'Squad Alpha',
-      status: 'healthy',
-      summary: 'Velocity up 12%, cycle time stable',
-    },
-    {
-      id: 2,
-      week: 'Week of 2025-11-24',
-      sprint: 'Sprint 34',
-      squad: 'Squad Alpha',
-      status: 'healthy',
-      summary: 'Strong sprint completion, no blockers',
-    },
-    {
-      id: 3,
-      week: 'Week of 2025-12-01',
-      sprint: 'Sprint 35',
-      squad: 'Squad Beta',
-      status: 'watch',
-      summary: 'Review latency increased by 24%',
-    },
-    {
-      id: 4,
-      week: 'Week of 2025-11-24',
-      sprint: 'Sprint 34',
-      squad: 'Squad Beta',
-      status: 'at-risk',
-      summary: '3 blocked items, velocity down 15%',
-    },
-    {
-      id: 5,
-      week: 'Week of 2025-11-17',
-      sprint: 'Sprint 33',
-      squad: 'Squad Alpha',
-      status: 'healthy',
-      summary: 'Consistent delivery, improved cycle time',
-    },
-    {
-      id: 6,
-      week: 'Week of 2025-11-17',
-      sprint: 'Sprint 33',
-      squad: 'Squad Beta',
-      status: 'watch',
-      summary: 'Some delays in code reviews',
-    },
-  ];
+  const projectName = currentProject?.name;
 
-  const reportDetail = {
-    summary: 'Squad Alpha maintained excellent performance throughout Sprint 35. The team successfully delivered all committed work with improved efficiency.',
-    keyMetrics: [
-      { name: 'Velocity', value: '52 points', change: '+12%', status: 'good' },
-      { name: 'Cycle Time', value: '2.8 days', change: 'Stable', status: 'good' },
-      { name: 'Throughput', value: '31 items', change: '+8%', status: 'good' },
-      { name: 'Review Latency', value: '3.2 hours', change: '-15%', status: 'good' },
-    ],
-    risks: [
-      'None identified - all metrics within healthy range',
-    ],
-    coaching: [
-      'Continue current practices - team collaboration is excellent',
-      'Consider sharing best practices with Squad Beta for code review process',
-      'Monitor capacity as velocity increases to prevent burnout',
-    ],
-  };
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      const data = await HttpService.getReports(projectName);
+      setReports(data);
+      setIsLoading(false);
+    };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return (
-          <span className="px-3 py-1 rounded-full bg-chart-2/20 text-chart-2 text-sm">
-            Healthy
-          </span>
-        );
-      case 'watch':
-        return (
-          <span className="px-3 py-1 rounded-full bg-chart-4/20 text-chart-4 text-sm">
-            Watch
-          </span>
-        );
-      case 'at-risk':
-        return (
-          <span className="px-3 py-1 rounded-full bg-destructive/20 text-destructive text-sm">
-            At Risk
-          </span>
-        );
-      default:
-        return null;
+    load();
+  }, [projectName]);
+
+
+  const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+
+  const handleDeleteReport = async () => {
+    if (!reportToDelete) return;
+
+    const success = await HttpService.deleteReport(reportToDelete.id);
+    if (success) {
+      setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
+      if (selectedReportId === reportToDelete.id) {
+        setSelectedReportId(null);
+      }
+      toast.success('Report deleted successfully');
+    } else {
+      toast.error('Failed to delete report');
     }
+    setReportToDelete(null);
   };
 
   return (
@@ -116,16 +93,13 @@ export default function Reports() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="text-muted-foreground">Squad / Team</Label>
-              <Select defaultValue="all">
+              <Label className="text-muted-foreground">Project</Label>
+              <Select defaultValue="current">
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select squad" />
+                  <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All squads</SelectItem>
-                  <SelectItem value="alpha">Squad Alpha</SelectItem>
-                  <SelectItem value="beta">Squad Beta</SelectItem>
-                  <SelectItem value="gamma">Squad Gamma</SelectItem>
+                  <SelectItem value="current">{projectName ?? 'Current project'}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -140,7 +114,6 @@ export default function Reports() {
                   <SelectItem value="3months">Last 3 months</SelectItem>
                   <SelectItem value="6months">Last 6 months</SelectItem>
                   <SelectItem value="year">Last year</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -162,151 +135,161 @@ export default function Reports() {
           </div>
 
           <div className="flex gap-3 mt-6">
-            <Button>Apply Filters</Button>
-            <Button variant="outline">Clear</Button>
+            <Button disabled>Apply Filters</Button>
+            <Button variant="outline" disabled>
+              Clear
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Reports list */}
       <div className="grid grid-cols-1 gap-4">
+        {isLoading && (
+          <div className="text-sm text-muted-foreground">Loading reports...</div>
+        )}
+
+        {!isLoading && reports.length === 0 && (
+          <div className="text-sm text-muted-foreground">
+            No reports found. Run an analysis to generate reports.
+          </div>
+        )}
+
         {reports.map((report) => (
-          <Card
-            key={report.id}
-            className="bg-card border-border hover:border-primary/50 transition-all"
-          >
-            <CardContent className="p-6 flex items-center justify-between">
-              <div className="flex items-center gap-6 flex-1">
-                <div className="flex items-center gap-2 text-muted-foreground min-w-[140px]">
-                  <Calendar size={16} />
-                  <span className="text-sm">{report.week}</span>
+          <div key={report.id} className="contents">
+            <Card
+              className={`bg-card border-border hover:border-primary/50 transition-all ${selectedReportId === report.id ? 'border-primary ring-1 ring-primary' : ''
+                }`}
+            >
+              <CardContent className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-6 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-muted-foreground min-w-[180px]">
+                    <Calendar size={16} />
+                    <span className="text-sm">{report.week}</span>
+                  </div>
+
+                  <div className="flex flex-col min-w-[160px]">
+                    <span className="text-sm text-muted-foreground">{report.repository}</span>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-foreground font-medium">{report.project}</h4>
+                      <span className="px-1.5 py-0.5 rounded-md bg-secondary/50 text-secondary-foreground text-[10px] font-medium border border-border">
+                        Project
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="min-w-[100px]">{getStatusBadge(report.status)}</div>
+
+                  <p className="text-muted-foreground flex-1 truncate">{report.summary}</p>
                 </div>
 
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-sm text-muted-foreground">
-                    {report.sprint}
-                  </span>
-                  <h4 className="text-foreground font-medium">{report.squad}</h4>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() =>
+                      setSelectedReportId(selectedReportId === report.id ? null : report.id)
+                    }
+                    variant={selectedReportId === report.id ? 'default' : 'secondary'}
+                    className="gap-2"
+                  >
+                    <Eye size={16} />
+                    {selectedReportId === report.id ? 'Close' : 'View'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    disabled
+                  >
+                    <Download size={18} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReportToDelete(report);
+                    }}
+                  >
+                    <Trash2 size={18} />
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="min-w-[100px]">{getStatusBadge(report.status)}</div>
+            {/* Detail panel (Inline) */}
+            {selectedReportId === report.id && (
+              <Card
+                className="bg-card border-primary/30 animate-in fade-in slide-in-from-top-2 duration-300 mt-2 ml-4 mr-4"
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-foreground mb-2">
+                      Report Details
+                    </CardTitle>
+                    <p className="text-muted-foreground text-sm">
+                      {report.week} • {report.project} • {report.repository}
+                    </p>
+                  </div>
+                  <Button onClick={() => setSelectedReportId(null)} variant="outline">
+                    Close
+                  </Button>
+                </CardHeader>
 
-                <p className="text-muted-foreground flex-1 truncate">{report.summary}</p>
-              </div>
+                <CardContent className="space-y-8 pt-6">
+                  {/* Summary */}
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                      className="flex items-center gap-2 hover:bg-accent/50 p-1 -ml-1 pr-3 rounded-lg transition-colors"
+                    >
+                      <ChevronRight
+                        size={20}
+                        className={`text-primary transition-transform duration-200 ${isSummaryOpen ? 'rotate-90' : ''}`}
+                      />
+                      <h3 className="text-foreground font-medium">Summary</h3>
+                    </button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setSelectedReport(selectedReport === report.id ? null : report.id)}
-                  variant={selectedReport === report.id ? "default" : "secondary"}
-                  className="gap-2"
-                >
-                  <Eye size={16} />
-                  {selectedReport === report.id ? 'Close' : 'View'}
-                </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Download size={18} />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                    {isSummaryOpen && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="text-muted-foreground pl-7">
+                          <MarkdownText content={report.summary} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Risks & Alerts */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ChevronRight size={20} className="text-primary" />
+                      <h3 className="text-foreground font-medium">Risks & Alerts</h3>
+                    </div>
+                    <div className="pl-7 space-y-2">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20">
+                        <AlertCircle size={18} className="text-chart-2 mt-0.5" />
+                        <p className="text-muted-foreground">
+                          {report.status === 'at-risk'
+                            ? 'This report contains risk signals. Use the chat to investigate details.'
+                            : 'No major risks detected for this report.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Detail panel */}
-      {selectedReport && (
-        <Card className="bg-card border-primary/30 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-foreground mb-2">
-                Weekly Report Details
-              </CardTitle>
-              <p className="text-muted-foreground text-sm">
-                {reports.find((r) => r.id === selectedReport)?.week} •{' '}
-                {reports.find((r) => r.id === selectedReport)?.squad}
-              </p>
-            </div>
-            <Button
-              onClick={() => setSelectedReport(null)}
-              variant="outline"
-            >
-              Close
-            </Button>
-          </CardHeader>
-          
-          <CardContent className="space-y-8 pt-6">
-            {/* Summary */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={20} className="text-primary" />
-                <h3 className="text-foreground font-medium">Summary</h3>
-              </div>
-              <p className="text-muted-foreground pl-7">{reportDetail.summary}</p>
-            </div>
-
-            {/* Key Metrics */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={20} className="text-primary" />
-                <h3 className="text-foreground font-medium">Key Metrics</h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pl-7">
-                {reportDetail.keyMetrics.map((metric) => (
-                  <div
-                    key={metric.name}
-                    className="bg-muted/50 border border-border rounded-lg p-4"
-                  >
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {metric.name}
-                    </p>
-                    <p className="text-xl text-foreground font-semibold mb-2">
-                      {metric.value}
-                    </p>
-                    <span className="text-xs text-chart-2 font-medium">{metric.change}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Risks & Alerts */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={20} className="text-primary" />
-                <h3 className="text-foreground font-medium">Risks & Alerts</h3>
-              </div>
-              <div className="pl-7 space-y-2">
-                {reportDetail.risks.map((risk, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20"
-                  >
-                    <AlertCircle size={18} className="text-chart-2 mt-0.5" />
-                    <p className="text-muted-foreground">{risk}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Coaching Tips */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={20} className="text-primary" />
-                <h3 className="text-foreground font-medium">Suggested Coaching Tips</h3>
-              </div>
-              <ul className="pl-7 space-y-2">
-                {reportDetail.coaching.map((tip, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-3 text-muted-foreground"
-                  >
-                    <span className="text-primary mt-1">•</span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <DeleteConfirmationModal
+        isOpen={!!reportToDelete}
+        onClose={() => setReportToDelete(null)}
+        onConfirm={handleDeleteReport}
+        title="Delete Report"
+        description="Are you sure you want to delete this report? This action cannot be undone."
+      />
     </div>
   );
 }

@@ -1,50 +1,46 @@
-import { connect } from 'http2';
-import { NextResponse } from 'next/server';
+import { createBackendFetcher } from "@/lib/auth0";
+import { NextResponse } from "next/server";
 
-// should return active connections
-export async function GET() {
-  const activeConnections = [
-    {
-      id: 1,
-      type: 'Repository',
-      name: 'main-backend-api',
-      project: 'Project Alpha',
-      status: 'active',
-      lastSync: '2 minutes ago',
-    },
-    {
-      id: 2,
-      type: 'Repository',
-      name: 'frontend-web-app',
-      project: 'Project Alpha',
-      status: 'active',
-      lastSync: '5 minutes ago',
-    },
-    {
-      id: 3,
-      type: 'Board',
-      name: 'Alpha Sprint Board',
-      project: 'Project Alpha',
-      status: 'syncing',
-      lastSync: 'Syncing now',
-    },
-    {
-      id: 4,
-      type: 'Repository',
-      name: 'mobile-app-ios',
-      project: 'Project Beta',
-      status: 'error',
-      lastSync: '2 hours ago',
-    },
-    {
-      id: 5,
-      type: 'Board',
-      name: 'Beta Kanban',
-      project: 'Project Beta',
-      status: 'active',
-      lastSync: '8 minutes ago',
-    },
-  ];
+export async function GET(request: Request) {
+  const fetcher = await createBackendFetcher();
 
-  return NextResponse.json(activeConnections);
+  try {
+    const url = new URL(request.url);
+    const projectName = url.searchParams.get("project_name");
+
+    const endpoint = projectName 
+      ? `/connections?project_name=${encodeURIComponent(projectName)}`
+      : "/connections";
+
+    const res = await fetcher.fetchWithAuth(endpoint, { 
+      cache: "no-store"
+    });
+    const data = await res.json().catch(() => []);
+    return NextResponse.json(data, { status: res.status });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
+
+export async function POST(request: Request) {
+  const fetcher = await createBackendFetcher();
+
+  try {
+    const body = await request.text();
+    const res = await fetcher.fetchWithAuth("/connections", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json"
+      },
+      body,
+    });
+
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+
+
