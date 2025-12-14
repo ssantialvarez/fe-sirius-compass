@@ -67,6 +67,18 @@ export class HttpService {
     return await response.json();
   }
 
+  static async deleteChatThread(threadId: string): Promise<number> {
+    try {
+      const response = await fetch(`/api/chat/threads/${threadId}`, {
+        method: 'DELETE',
+      });
+      return response.status;
+    } catch (error) {
+      console.error('Error deleting chat thread:', error);
+      return 500;
+    }
+  }
+
   static async getReports(projectName?: string, limit = 50): Promise<Report[]> {
     try {
       const url = new URL('/api/reports', window.location.origin);

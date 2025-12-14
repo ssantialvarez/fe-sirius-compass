@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
-import { Send, Users, TrendingUp, Clock, Loader2 } from 'lucide-react';
+import { Send, Users, TrendingUp, Clock, Loader2, Trash2 } from 'lucide-react';
+import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
+import { toast } from 'sonner';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
 import type { ChatThread, Connection } from '@/lib/types';
@@ -222,6 +224,7 @@ export default function AnalysisChat() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
+  const [threadToDelete, setThreadToDelete] = useState<ChatThread | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -286,8 +289,15 @@ export default function AnalysisChat() {
       setMessages(uiMessages);
     } catch (e) {
       if (messagesRequestRef.current !== requestId) return;
-      setError(String(e));
-      setMessages([]);
+      const msg = String(e);
+      // Ignore 404 (new thread not saved yet)
+      if (msg.includes('404') || msg.includes('not found')) {
+        setMessages([]);
+        setError(null);
+      } else {
+        setError(msg);
+        setMessages([]);
+      }
     } finally {
       if (messagesRequestRef.current === requestId) {
         setIsLoadingMessages(false);
@@ -461,6 +471,27 @@ export default function AnalysisChat() {
     }
   };
 
+
+
+  const handleDeleteThread = async () => {
+    if (!threadToDelete) return;
+
+    const status = await HttpService.deleteChatThread(threadToDelete.thread_id);
+
+    // Treat 2xx and 404 (Not Found) as success
+    if ((status >= 200 && status < 300) || status === 404) {
+      setThreads((prev) => prev.filter((t) => t.thread_id !== threadToDelete.thread_id));
+      if (selectedThreadId === threadToDelete.thread_id) {
+        setSelectedThreadId(null);
+        setMessages([]);
+      }
+      toast.success('Conversation deleted');
+    } else {
+      toast.error(`Failed to delete conversation (Status: ${status})`);
+    }
+    setThreadToDelete(null);
+  };
+
   return (
     <div className="h-[calc(100vh-4rem)] flex gap-6 p-6">
       {/* Left sidebar - Conversations */}
@@ -476,19 +507,34 @@ export default function AnalysisChat() {
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {threads.map((thread, index) => (
-            <button
+            <div
               key={thread.thread_id}
-              onClick={() => setSelectedThreadId(thread.thread_id)}
-              className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${thread.thread_id === selectedThreadId || (!selectedThreadId && index === 0)
+              className={`group w-full text-left px-3 py-3 rounded-lg transition-colors flex items-center justify-between ${thread.thread_id === selectedThreadId || (!selectedThreadId && index === 0)
                 ? 'bg-primary/20 border border-primary/30'
                 : 'hover:bg-accent'
                 }`}
             >
-              <p className="text-sm text-foreground mb-1 line-clamp-2">
-                {thread.title}
-              </p>
-              <p className="text-xs text-muted-foreground">{formatRelative(thread.updated_at)}</p>
-            </button>
+              <button
+                className="flex-1 text-left min-w-0 mr-2"
+                onClick={() => setSelectedThreadId(thread.thread_id)}
+              >
+                <p className="text-sm text-foreground mb-1 line-clamp-2">
+                  {thread.title}
+                </p>
+                <p className="text-xs text-muted-foreground">{formatRelative(thread.updated_at)}</p>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setThreadToDelete(thread);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-md transition-all"
+                title="Delete conversation"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           ))}
 
           {threads.length === 0 && (
@@ -528,13 +574,13 @@ export default function AnalysisChat() {
             >
               <div
                 className={`max-w-3xl ${message.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-6 py-4'
+                  ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2'
                   : 'space-y-4'
                   }`}
               >
                 {message.role === 'assistant' && (
                   <div
-                    className="bg-muted border border-border rounded-2xl rounded-tl-sm px-6 py-4"
+                    className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2"
                     title={formatTimestamp(message.createdAt)}
                   >
                     <div className="text-foreground">
@@ -561,21 +607,7 @@ export default function AnalysisChat() {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-border p-6">
-          <div className="mb-3 flex gap-2">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.label}
-                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent text-muted-foreground rounded-lg transition-colors text-sm border border-border"
-                >
-                  <Icon size={14} />
-                  {action.label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="border-t border-border p-2">
 
           <div className="flex gap-3">
             <input
@@ -584,12 +616,12 @@ export default function AnalysisChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Ask anything about teams, sprints, repos, or developers…"
-              className="flex-1 bg-muted text-foreground px-4 py-3 rounded-lg border border-border focus:border-primary focus:outline-none transition-colors placeholder:text-muted-foreground"
+              className="flex-1 bg-muted text-foreground px-4 py-2 rounded-lg border border-border focus:border-primary focus:outline-none transition-colors placeholder:text-muted-foreground"
             />
             <button
               onClick={handleSend}
               disabled={isStreaming}
-              className="px-6 py-3 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground rounded-lg transition-colors flex items-center gap-2"
             >
               <Send size={18} />
               Send
@@ -603,6 +635,14 @@ export default function AnalysisChat() {
           )}
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={!!threadToDelete}
+        onClose={() => setThreadToDelete(null)}
+        onConfirm={handleDeleteThread}
+        title="Delete Conversation"
+        description="Are you sure you want to delete this conversation? This action cannot be undone."
+      />
     </div>
   );
 }
