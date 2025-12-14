@@ -5,16 +5,11 @@ export async function GET(request: Request) {
   const fetcher = await createBackendFetcher();
 
   try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get("user_id");
-
-    const endpoint = userId 
-      ? `/chat/threads?user_id=${encodeURIComponent(userId)}`
-      : "/chat/threads";
+    const endpoint = "/chat/threads";
 
     const res = await fetcher.fetchWithAuth(endpoint, { 
       cache: "no-store"
-    });
+    }, {audience: process.env.AUTH0_AUDIENCE});
     const data = await res.json().catch(() => []);
     return NextResponse.json(data, { status: res.status });
   } catch (e) {

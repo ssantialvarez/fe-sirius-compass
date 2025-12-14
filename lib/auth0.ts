@@ -8,7 +8,7 @@ export const auth0 = new Auth0Client({
     audience: process.env.AUTH0_AUDIENCE,
     scope: 'openid profile email offline_access', 
   },
-  allowInsecureRequests: process.env.NODE_ENV !== 'production',
+  allowInsecureRequests: true,
    async onCallback(error, context, session) {
     if (error) {
       console.error('Authentication error:', error);
