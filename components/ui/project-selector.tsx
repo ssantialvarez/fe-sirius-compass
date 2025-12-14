@@ -27,7 +27,7 @@ export const ProjectSelector = () => {
       }}
     >
       <SelectTrigger className="min-w-[180px] text-[14px] bg-transparent text-gray-400 font-medium border-none focus:ring-0 focus:ring-offset-0">
-        <span className="text-white mr-2">Project:</span>
+        <span className="text-[--var-primary] mr-2">Project:</span>
         <SelectValue placeholder="Select project" />
       </SelectTrigger>
       <SelectContent className="bg-background text-gray-400 border-white/10">
