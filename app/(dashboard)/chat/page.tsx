@@ -252,7 +252,7 @@ export default function AnalysisChat() {
 
   const refreshThreads = async () => {
     try {
-      const data = await HttpService.getChatThreads(userId);
+      const data = await HttpService.getChatThreads();
       setThreads(data);
       setSelectedThreadId((current) => {
         if (current && current !== 'undefined') return current;
