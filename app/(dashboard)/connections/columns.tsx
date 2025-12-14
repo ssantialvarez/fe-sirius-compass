@@ -1,10 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Connection } from "@/lib/types"
 import { GitBranch, Trello, RefreshCw, Settings, CheckCircle, Loader, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { HttpService } from "@/lib/service"
+import { useUser } from "@auth0/nextjs-auth0"
 
 interface TableHeaderProps {
   children: React.ReactNode
@@ -95,16 +98,49 @@ export const columns: ColumnDef<Connection>[] = [
     id: "actions",
     header: () => <TableHeader className="text-right">Actions</TableHeader>,
     cell: ({ row }) => {
-      return (
-        <div className="flex items-center justify-end gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
-            <RefreshCw size={16} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
-            <Settings size={16} />
-          </Button>
-        </div>
-      )
+      return <ConnectionActions connection={row.original} />
     },
   },
 ]
+
+function ConnectionActions({ connection }: { connection: Connection }) {
+  const { user } = useUser()
+  const [isRunning, setIsRunning] = useState(false)
+
+  const handleAnalyze = async () => {
+    if (connection.type !== "Repository") return
+    setIsRunning(true)
+    await HttpService.analyzeRepository({
+      repo_url: `https://github.com/${connection.name}`,
+      developer_name: "Team",
+      lookback_days: 90,
+      project_name: connection.project,
+      user_id: user?.sub,
+    })
+    setIsRunning(false)
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+        onClick={handleAnalyze}
+        disabled={isRunning || connection.type !== "Repository"}
+        title={connection.type === "Repository" ? "Run analysis" : "Not supported"}
+      >
+        <RefreshCw size={16} className={isRunning ? "animate-spin" : ""} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+        disabled
+        title="Settings (coming soon)"
+      >
+        <Settings size={16} />
+      </Button>
+    </div>
+  )
+}

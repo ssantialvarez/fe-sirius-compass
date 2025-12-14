@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
+import { useUser } from "@auth0/nextjs-auth0"
 import {
   Dialog,
   DialogTrigger,
@@ -15,17 +16,39 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { GitBranch, Trello, ArrowRight, Plus, ArrowLeft } from "lucide-react"
+import { HttpService } from "@/lib/service"
+import { useProjectStore } from "@/lib/store"
 
-export function AddConnectionDialog({ className }: { className?: string }) {
+export function AddConnectionDialog({
+  className,
+  onConnectionCreated,
+}: {
+  className?: string
+  onConnectionCreated?: () => void
+}) {
   const [step, setStep] = useState<"choice" | "form">("choice")
   const [selected, setSelected] = useState<"repository" | "board" | null>(null)
-  const [value, setValue] = useState("")
+  const [projectName, setProjectName] = useState("")
+  const [repoUrl, setRepoUrl] = useState("")
+  const [githubToken, setGithubToken] = useState("")
+  const [linearApiKey, setLinearApiKey] = useState("")
+  const [linearTeamKey, setLinearTeamKey] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const { currentProject, setProjects, setCurrentProject } = useProjectStore()
+  const { user } = useUser()
 
   const resetState = () => {
     setStep("choice")
     setSelected(null)
-    setValue("")
+    setProjectName("")
+    setRepoUrl("")
+    setGithubToken("")
+    setLinearApiKey("")
+    setLinearTeamKey("")
+    setIsSaving(false)
+    setError(null)
   }
 
   const handleOpenChange = (open: boolean) => {
@@ -33,6 +56,8 @@ export function AddConnectionDialog({ className }: { className?: string }) {
     if (!open) {
       // Small delay to reset after closing animation
       setTimeout(resetState, 300)
+    } else {
+      setProjectName(currentProject?.name ?? "")
     }
   }
 
@@ -41,9 +66,57 @@ export function AddConnectionDialog({ className }: { className?: string }) {
     setStep("form")
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Adding connection", { type: selected, value })
+
+    setError(null)
+    const resolvedProjectName = projectName.trim()
+    if (!resolvedProjectName) {
+      setError("Project name is required.")
+      return
+    }
+
+    if (selected === "repository") {
+      if (!repoUrl.trim()) {
+        setError("Repository URL is required.")
+        return
+      }
+    }
+
+    if (selected === "board") {
+      if (!linearApiKey.trim()) {
+        setError("Linear API key is required.")
+        return
+      }
+      if (!linearTeamKey.trim()) {
+        setError("Linear team key is required (e.g., TRI).")
+        return
+      }
+    }
+
+    setIsSaving(true)
+    const created = await HttpService.createConnection({
+      type: selected === "repository" ? "repository" : "linear",
+      project_name: resolvedProjectName,
+      repo_url: selected === "repository" ? repoUrl.trim() : undefined,
+      github_token: selected === "repository" && githubToken.trim() ? githubToken.trim() : undefined,
+      linear_api_key: selected === "board" ? linearApiKey.trim() : undefined,
+      linear_team_key: selected === "board" ? linearTeamKey.trim() : undefined,
+      user_id: user?.sub,
+    })
+    setIsSaving(false)
+
+    if (!created) {
+      setError("Failed to create connection. Check backend logs for details.")
+      return
+    }
+
+    const projects = await HttpService.getProjects()
+    setProjects(projects)
+    const matched = projects.find((p) => p.name === resolvedProjectName)
+    if (matched) setCurrentProject(matched)
+
+    onConnectionCreated?.()
     setIsOpen(false)
   }
 
@@ -103,6 +176,17 @@ export function AddConnectionDialog({ className }: { className?: string }) {
                 className="space-y-4"
               >
                 <div className="space-y-3">
+                  <Label htmlFor="connection-project">Project Name</Label>
+                  <Input
+                    id="connection-project"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="e.g., Tricker"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-3">
                   <Label htmlFor="connection-url">
                     {selected === "repository" ? "Repository URL" : "Board URL"}
                   </Label>
@@ -112,11 +196,10 @@ export function AddConnectionDialog({ className }: { className?: string }) {
                     </div>
                     <Input
                       id="connection-url"
-                      value={value}
-                      onChange={(e) => setValue(e.target.value)}
-                      placeholder={selected === "repository" ? "https://github.com/org/repo" : "https://trello.com/b/..."}
+                      value={repoUrl}
+                      onChange={(e) => setRepoUrl(e.target.value)}
+                      placeholder={selected === "repository" ? "https://github.com/org/repo" : "https://linear.app/..."}
                       className="pl-9"
-                      autoFocus
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -125,6 +208,56 @@ export function AddConnectionDialog({ className }: { className?: string }) {
                       : "We'll sync tickets and sprint data."}
                   </p>
                 </div>
+
+                {selected === "repository" && (
+                  <div className="space-y-3">
+                    <Label htmlFor="github-token">GitHub Token (optional)</Label>
+                    <Input
+                      id="github-token"
+                      value={githubToken}
+                      onChange={(e) => setGithubToken(e.target.value)}
+                      placeholder="ghp_..."
+                      type="password"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Stored encrypted in the backend. If omitted, the backend will use its server configuration.
+                    </p>
+                  </div>
+                )}
+
+                {selected === "board" && (
+                  <>
+                    <div className="space-y-3">
+                      <Label htmlFor="linear-api-key">Linear API Key</Label>
+                      <Input
+                        id="linear-api-key"
+                        value={linearApiKey}
+                        onChange={(e) => setLinearApiKey(e.target.value)}
+                        placeholder="lin_api_..."
+                        type="password"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="linear-team-key">Linear Team Key</Label>
+                      <Input
+                        id="linear-team-key"
+                        value={linearTeamKey}
+                        onChange={(e) => setLinearTeamKey(e.target.value)}
+                        placeholder="e.g., TRI"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Used to scope issues to the correct team for this project.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {error && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center pt-4">
                   <Button 
@@ -140,7 +273,7 @@ export function AddConnectionDialog({ className }: { className?: string }) {
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={!value}>
+                    <Button type="submit" disabled={isSaving}>
                       Connect
                       <ArrowRight size={16} className="ml-2" />
                     </Button>

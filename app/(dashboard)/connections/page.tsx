@@ -37,13 +37,14 @@ export default function Connections() {
   ];
   const [activeConnections, setConnections] = useState([] as Connection[]);
   
-    useEffect(() => {
-      const fetchConnections = async () => {
-        const data = await HttpService.getConnections();
-        setConnections(data);
-      };
-      fetchConnections();
-    }, []);
+  const fetchConnections = async () => {
+    const data = await HttpService.getConnections();
+    setConnections(data);
+  };
+
+  useEffect(() => {
+    fetchConnections();
+  }, []);
 
   return (
     <div className="space-y-8 p-8">
@@ -56,9 +57,10 @@ export default function Connections() {
             All connections are secure and encrypted.
           </p>
         </div>
-        <AddConnectionDialog className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2">
-          
-        </AddConnectionDialog>
+        <AddConnectionDialog
+          className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
+          onConnectionCreated={fetchConnections}
+        />
       </div>
 
       {/* Integration cards grid */}
