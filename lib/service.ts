@@ -45,9 +45,8 @@ export class HttpService {
     }
   }
 
-  static async getChatThreads(userId?: string): Promise<ChatThread[]> {
+  static async getChatThreads(): Promise<ChatThread[]> {
     const url = new URL('/api/chat/threads', window.location.origin);
-    if (userId) url.searchParams.set('user_id', userId);
     const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
       const text = await response.text().catch(() => '');
