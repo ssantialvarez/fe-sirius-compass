@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
     const res = await fetcher.fetchWithAuth(endpoint, { 
       cache: "no-store"
-    }, {audience: process.env.AUTH0_AUDIENCE});
+    });
     const data = await res.json().catch(() => []);
     return NextResponse.json(data, { status: res.status });
   } catch (e) {

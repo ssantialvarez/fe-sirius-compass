@@ -5,7 +5,7 @@ export const auth0 = new Auth0Client({
   appBaseUrl: process.env.APP_BASE_URL,
   authorizationParameters: {
     redirect_uri: `${process.env.APP_BASE_URL}/auth/callback`,
-    audience: process.env.AUTH0_AUDIENCE,
+    audience: process.env.AUTH0_AUDIENCE || 'http://localhost:8000',
     scope: 'openid profile email offline_access',
   },
   allowInsecureRequests: true,
