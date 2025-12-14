@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
-import { Send, Calendar, Users, TrendingUp, Clock, Loader2 } from 'lucide-react';
+import { Send, Users, TrendingUp, Clock, Loader2 } from 'lucide-react';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
 import type { ChatThread, Connection } from '@/lib/types';
@@ -71,10 +71,10 @@ function renderInlineMarkdown(text: string): ReactNode[] {
     type: 'link' | 'bold' | 'code';
     regex: RegExp;
   }> = [
-    { type: 'link', regex: /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/ },
-    { type: 'bold', regex: /\*\*([^*]+)\*\*/ },
-    { type: 'code', regex: /`([^`]+)`/ },
-  ];
+      { type: 'link', regex: /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/ },
+      { type: 'bold', regex: /\*\*([^*]+)\*\*/ },
+      { type: 'code', regex: /`([^`]+)`/ },
+    ];
 
   while (remaining.length > 0) {
     let best:
@@ -219,8 +219,6 @@ function MarkdownText({ content }: { content: string }) {
 
 export default function AnalysisChat() {
   const [input, setInput] = useState('');
-  const [scope, setScope] = useState('project');
-  const [timeRange, setTimeRange] = useState('sprint');
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -464,10 +462,10 @@ export default function AnalysisChat() {
   };
 
   return (
-    <div className="h-full flex gap-6">
+    <div className="h-[calc(100vh-4rem)] flex gap-6 p-6">
       {/* Left sidebar - Conversations */}
-      <div className="w-64 bg-card border border-border rounded-xl p-4">
-        <div className="mb-4">
+      <div className="w-64 bg-card border border-border rounded-xl flex flex-col overflow-hidden">
+        <div className="p-4 flex-none border-b border-border/50">
           <h3 className="text-foreground mb-2">Conversations</h3>
           <button
             onClick={handleNewConversation}
@@ -476,16 +474,15 @@ export default function AnalysisChat() {
             New conversation
           </button>
         </div>
-        <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {threads.map((thread, index) => (
             <button
               key={thread.thread_id}
               onClick={() => setSelectedThreadId(thread.thread_id)}
-              className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
-                thread.thread_id === selectedThreadId || (!selectedThreadId && index === 0)
-                  ? 'bg-primary/20 border border-primary/30'
-                  : 'hover:bg-accent'
-              }`}
+              className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${thread.thread_id === selectedThreadId || (!selectedThreadId && index === 0)
+                ? 'bg-primary/20 border border-primary/30'
+                : 'hover:bg-accent'
+                }`}
             >
               <p className="text-sm text-foreground mb-1 line-clamp-2">
                 {thread.title}
@@ -505,45 +502,14 @@ export default function AnalysisChat() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col bg-card border border-border rounded-xl overflow-hidden">
         {/* Chat header */}
-        <div className="border-b border-border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h3 className="text-foreground">
-                {selectedThread?.title ?? 'New conversation'}
-              </h3>
-              <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm">
-                AI Assistant
-              </span>
-            </div>
-          </div>
-
-          {/* Scope and time selectors */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-muted-foreground" />
-              <select
-                value={scope}
-                onChange={(e) => setScope(e.target.value)}
-                className="bg-muted text-foreground px-3 py-1.5 rounded-lg border border-border text-sm cursor-pointer"
-              >
-                <option value="project">Project</option>
-                <option value="squad">Squad / Team</option>
-                <option value="developer">Developer</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-muted-foreground" />
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
-                className="bg-muted text-foreground px-3 py-1.5 rounded-lg border border-border text-sm cursor-pointer"
-              >
-                <option value="sprint">This sprint</option>
-                <option value="4weeks">Last 4 weeks</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
+        <div className="border-b border-border p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="text-foreground">
+              {selectedThread?.title ?? 'New conversation'}
+            </h3>
+            <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm">
+              AI Assistant
+            </span>
           </div>
         </div>
 
@@ -561,11 +527,10 @@ export default function AnalysisChat() {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-3xl ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-6 py-4'
-                    : 'space-y-4'
-                }`}
+                className={`max-w-3xl ${message.role === 'user'
+                  ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-6 py-4'
+                  : 'space-y-4'
+                  }`}
               >
                 {message.role === 'assistant' && (
                   <div

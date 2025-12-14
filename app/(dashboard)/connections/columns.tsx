@@ -59,7 +59,7 @@ export const columns: ColumnDef<Connection>[] = [
     header: () => <TableHeader>Status</TableHeader>,
     cell: ({ row }) => {
       const status = row.getValue("status") as string
-      
+
       switch (status) {
         case 'active':
           return (
@@ -103,9 +103,16 @@ export const columns: ColumnDef<Connection>[] = [
   },
 ]
 
+import { Trash2 } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { toast } from "sonner"
+
+// ... imports
+
 function ConnectionActions({ connection }: { connection: Connection }) {
   const { user } = useUser()
   const [isRunning, setIsRunning] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const handleAnalyze = async () => {
     if (connection.type !== "Repository") return
@@ -120,27 +127,59 @@ function ConnectionActions({ connection }: { connection: Connection }) {
     setIsRunning(false)
   }
 
+  const handleDelete = async () => {
+    const success = await HttpService.deleteConnection(connection.id, connection.type as any)
+    if (success) {
+      toast.success("Connection deleted")
+      // Trigger refresh in parent
+      window.dispatchEvent(new Event('connection-updated'))
+    } else {
+      toast.error("Failed to delete connection")
+    }
+    setIsDeleteOpen(false)
+  }
+
   return (
-    <div className="flex items-center justify-end gap-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
-        onClick={handleAnalyze}
-        disabled={isRunning || connection.type !== "Repository"}
-        title={connection.type === "Repository" ? "Run analysis" : "Not supported"}
-      >
-        <RefreshCw size={16} className={isRunning ? "animate-spin" : ""} />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
-        disabled
-        title="Settings (coming soon)"
-      >
-        <Settings size={16} />
-      </Button>
-    </div>
+    <>
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+          onClick={handleAnalyze}
+          disabled={isRunning || connection.type !== "Repository"}
+          title={connection.type === "Repository" ? "Run analysis" : "Not supported"}
+        >
+          <RefreshCw size={16} className={isRunning ? "animate-spin" : ""} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+          disabled
+          title="Settings (coming soon)"
+        >
+          <Settings size={16} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-destructive"
+          onClick={() => setIsDeleteOpen(true)}
+          title="Delete connection"
+        >
+          <Trash2 size={16} />
+        </Button>
+      </div>
+
+      <DeleteConfirmationModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Connection"
+        description={`Are you sure you want to delete the connection "${connection.name}"? This will stop data synchronization.`}
+      />
+    </>
   )
 }
+

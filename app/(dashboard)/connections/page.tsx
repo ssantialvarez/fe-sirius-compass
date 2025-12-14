@@ -36,7 +36,7 @@ export default function Connections() {
     },
   ];
   const [activeConnections, setConnections] = useState([] as Connection[]);
-  
+
   const fetchConnections = async () => {
     const data = await HttpService.getConnections();
     setConnections(data);
@@ -45,6 +45,10 @@ export default function Connections() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchConnections();
+
+    const handleRefresh = () => fetchConnections();
+    window.addEventListener('connection-updated', handleRefresh);
+    return () => window.removeEventListener('connection-updated', handleRefresh);
   }, []);
 
   return (
@@ -62,71 +66,6 @@ export default function Connections() {
           className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
           onConnectionCreated={fetchConnections}
         />
-      </div>
-
-      {/* Integration cards grid */}
-      <div>
-        <h3 className="text-foreground mb-4 text-xl font-semibold">Available Integrations</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {integrationTypes.map((integration) => {
-            const Icon = integration.icon;
-            const isConnected = integration.status === 'connected';
-
-            return (
-              <Card
-                key={integration.id}
-                className={`bg-card border transition-all ${
-                  isConnected
-                    ? 'border-primary/30'
-                    : 'border-border hover:border-sidebar-border'
-                }`}
-              >
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center">
-                    <Icon size={24} className="text-primary" />
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs ${
-                      isConnected
-                        ? 'bg-chart-1/20 text-chart-1'
-                        : 'bg-muted/20 text-muted-foreground'
-                    }`}
-                  >
-                    {isConnected ? 'Connected' : 'Not connected'}
-                  </span>
-                </CardHeader>
-
-                <CardContent className="space-y-3 pt-4">
-                  <div>
-                    <CardTitle className="text-foreground text-lg">
-                      {integration.name}
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground mt-1">
-                      {integration.description}
-                    </CardDescription>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground">
-                    Data: {integration.dataTypes}
-                  </p>
-                </CardContent>
-                
-                <CardFooter>
-                  <Button
-                    className={`w-full cursor-pointer duration-300 ${
-                      isConnected
-                        ? 'bg-accent hover:bg-muted hover:text-foreground text-foreground border border-border'
-                        : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                    }`}
-                    variant={isConnected ? "outline" : "default"}
-                  >
-                    {isConnected ? 'Manage' : 'Connect'}
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
       </div>
 
       {/* Active connections table */}

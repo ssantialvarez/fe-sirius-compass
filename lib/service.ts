@@ -106,4 +106,33 @@ export class HttpService {
       return false;
     }
   }
+  static async deleteConnection(id: number | string, type: 'Repository' | 'Board'): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/connections/${id}?type=${type}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete connection');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error deleting connection:', error);
+      return false;
+    }
+  }
+
+  static async deleteReport(id: number): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/reports/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete report');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      return false;
+    }
+  }
 }

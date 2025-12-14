@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MarkdownText } from '@/components/ui/markdown-text';
+import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
 import { Label } from '@/components/ui/label';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
@@ -43,6 +46,7 @@ export default function Reports() {
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(true);
   const { currentProject } = useProjectStore();
 
   const projectName = currentProject?.name;
@@ -58,14 +62,28 @@ export default function Reports() {
     load();
   }, [projectName]);
 
-  const selectedReport = useMemo(
-    () => reports.find((r) => r.id === selectedReportId) ?? null,
-    [reports, selectedReportId],
-  );
+
+  const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+
+  const handleDeleteReport = async () => {
+    if (!reportToDelete) return;
+
+    const success = await HttpService.deleteReport(reportToDelete.id);
+    if (success) {
+      setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
+      if (selectedReportId === reportToDelete.id) {
+        setSelectedReportId(null);
+      }
+      toast.success('Report deleted successfully');
+    } else {
+      toast.error('Failed to delete report');
+    }
+    setReportToDelete(null);
+  };
 
   return (
     <div className="space-y-8 p-8">
-      {/* Filters (UI placeholder - backend filtering coming next) */}
+      {/* Filters */}
       <Card className="bg-card border-border">
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-4">
@@ -138,102 +156,135 @@ export default function Reports() {
         )}
 
         {reports.map((report) => (
-          <Card
-            key={report.id}
-            className="bg-card border-border hover:border-primary/50 transition-all"
-          >
-            <CardContent className="p-6 flex items-center justify-between">
-              <div className="flex items-center gap-6 flex-1">
-                <div className="flex items-center gap-2 text-muted-foreground min-w-[180px]">
-                  <Calendar size={16} />
-                  <span className="text-sm">{report.week}</span>
+          <div key={report.id} className="contents">
+            <Card
+              className={`bg-card border-border hover:border-primary/50 transition-all ${selectedReportId === report.id ? 'border-primary ring-1 ring-primary' : ''
+                }`}
+            >
+              <CardContent className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-6 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-muted-foreground min-w-[180px]">
+                    <Calendar size={16} />
+                    <span className="text-sm">{report.week}</span>
+                  </div>
+
+                  <div className="flex flex-col min-w-[160px]">
+                    <span className="text-sm text-muted-foreground">{report.repository}</span>
+                    <h4 className="text-foreground font-medium">{report.project}</h4>
+                  </div>
+
+                  <div className="min-w-[100px]">{getStatusBadge(report.status)}</div>
+
+                  <p className="text-muted-foreground flex-1 truncate">{report.summary}</p>
                 </div>
 
-                <div className="flex flex-col min-w-[160px]">
-                  <span className="text-sm text-muted-foreground">{report.repository}</span>
-                  <h4 className="text-foreground font-medium">{report.project}</h4>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() =>
+                      setSelectedReportId(selectedReportId === report.id ? null : report.id)
+                    }
+                    variant={selectedReportId === report.id ? 'default' : 'secondary'}
+                    className="gap-2"
+                  >
+                    <Eye size={16} />
+                    {selectedReportId === report.id ? 'Close' : 'View'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    disabled
+                  >
+                    <Download size={18} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReportToDelete(report);
+                    }}
+                  >
+                    <Trash2 size={18} />
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="min-w-[100px]">{getStatusBadge(report.status)}</div>
+            {/* Detail panel (Inline) */}
+            {selectedReportId === report.id && (
+              <Card
+                className="bg-card border-primary/30 animate-in fade-in slide-in-from-top-2 duration-300 mt-2 ml-4 mr-4"
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-foreground mb-2">
+                      Report Details
+                    </CardTitle>
+                    <p className="text-muted-foreground text-sm">
+                      {report.week} • {report.project} • {report.repository}
+                    </p>
+                  </div>
+                  <Button onClick={() => setSelectedReportId(null)} variant="outline">
+                    Close
+                  </Button>
+                </CardHeader>
 
-                <p className="text-muted-foreground flex-1 truncate">{report.summary}</p>
-              </div>
+                <CardContent className="space-y-8 pt-6">
+                  {/* Summary */}
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                      className="flex items-center gap-2 hover:bg-accent/50 p-1 -ml-1 pr-3 rounded-lg transition-colors"
+                    >
+                      <ChevronRight
+                        size={20}
+                        className={`text-primary transition-transform duration-200 ${isSummaryOpen ? 'rotate-90' : ''}`}
+                      />
+                      <h3 className="text-foreground font-medium">Summary</h3>
+                    </button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() =>
-                    setSelectedReportId(selectedReportId === report.id ? null : report.id)
-                  }
-                  variant={selectedReportId === report.id ? 'default' : 'secondary'}
-                  className="gap-2"
-                >
-                  <Eye size={16} />
-                  {selectedReportId === report.id ? 'Close' : 'View'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-foreground"
-                  disabled
-                >
-                  <Download size={18} />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                    {isSummaryOpen && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="text-muted-foreground pl-7">
+                          <MarkdownText content={report.summary} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Risks & Alerts */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ChevronRight size={20} className="text-primary" />
+                      <h3 className="text-foreground font-medium">Risks & Alerts</h3>
+                    </div>
+                    <div className="pl-7 space-y-2">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20">
+                        <AlertCircle size={18} className="text-chart-2 mt-0.5" />
+                        <p className="text-muted-foreground">
+                          {report.status === 'at-risk'
+                            ? 'This report contains risk signals. Use the chat to investigate details.'
+                            : 'No major risks detected for this report.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Detail panel */}
-      {selectedReport && (
-        <Card className="bg-card border-primary/30 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-foreground mb-2">
-                Report Details
-              </CardTitle>
-              <p className="text-muted-foreground text-sm">
-                {selectedReport.week} • {selectedReport.project} • {selectedReport.repository}
-              </p>
-            </div>
-            <Button onClick={() => setSelectedReportId(null)} variant="outline">
-              Close
-            </Button>
-          </CardHeader>
-
-          <CardContent className="space-y-8 pt-6">
-            {/* Summary */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={20} className="text-primary" />
-                <h3 className="text-foreground font-medium">Summary</h3>
-              </div>
-              <p className="text-muted-foreground pl-7 whitespace-pre-line">
-                {selectedReport.summary}
-              </p>
-            </div>
-
-            {/* Risks & Alerts */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={20} className="text-primary" />
-                <h3 className="text-foreground font-medium">Risks & Alerts</h3>
-              </div>
-              <div className="pl-7 space-y-2">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20">
-                  <AlertCircle size={18} className="text-chart-2 mt-0.5" />
-                  <p className="text-muted-foreground">
-                    {selectedReport.status === 'at-risk'
-                      ? 'This report contains risk signals. Use the chat to investigate details.'
-                      : 'No major risks detected for this report.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <DeleteConfirmationModal
+        isOpen={!!reportToDelete}
+        onClose={() => setReportToDelete(null)}
+        onConfirm={handleDeleteReport}
+        title="Delete Report"
+        description="Are you sure you want to delete this report? This action cannot be undone."
+      />
     </div>
   );
 }
-
