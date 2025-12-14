@@ -1,16 +1,20 @@
+import { createBackendFetcher } from "@/lib/auth0";
 import { NextResponse } from "next/server";
 
-const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
-
 export async function GET(request: Request) {
+  const fetcher = await createBackendFetcher();
+
   try {
     const url = new URL(request.url);
     const userId = url.searchParams.get("user_id");
 
-    const upstreamUrl = new URL(`${backendUrl}/chat/threads`);
-    if (userId) upstreamUrl.searchParams.set("user_id", userId);
+    const endpoint = userId 
+      ? `/chat/threads?user_id=${encodeURIComponent(userId)}`
+      : "/chat/threads";
 
-    const res = await fetch(upstreamUrl.toString(), { cache: "no-store" });
+    const res = await fetcher.fetchWithAuth(endpoint, { 
+      cache: "no-store"
+    });
     const data = await res.json().catch(() => []);
     return NextResponse.json(data, { status: res.status });
   } catch (e) {

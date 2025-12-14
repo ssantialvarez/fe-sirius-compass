@@ -1,13 +1,13 @@
+import { createBackendFetcher } from "@/lib/auth0";
 import { NextResponse } from "next/server";
-
-const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: Request) {
   const accept = request.headers.get("accept") ?? "";
+  const fetcher = await createBackendFetcher();
 
   try {
     const body = await request.text();
-    const res = await fetch(`${backendUrl}/chat`, {
+    const res = await fetcher.fetchWithAuth("/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

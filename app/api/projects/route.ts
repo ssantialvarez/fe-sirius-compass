@@ -1,10 +1,13 @@
+import { createBackendFetcher } from "@/lib/auth0";
 import { NextResponse } from "next/server";
 
-const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
-
 export async function GET() {
+  const fetcher = await createBackendFetcher();
+
   try {
-    const res = await fetch(`${backendUrl}/projects`, { cache: "no-store" });
+    const res = await fetcher.fetchWithAuth("/projects", { 
+      cache: "no-store"
+    });
     const data = await res.json().catch(() => []);
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
@@ -13,11 +16,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const fetcher = await createBackendFetcher();
+
   try {
     const body = await request.text();
-    const res = await fetch(`${backendUrl}/projects`, {
+    const res = await fetcher.fetchWithAuth("/projects", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json"
+      },
       body,
     });
 

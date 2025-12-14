@@ -4,8 +4,11 @@ import { NextResponse } from 'next/server';
 export const auth0 = new Auth0Client({
   appBaseUrl: process.env.APP_BASE_URL,
   authorizationParameters: {
-    redirect_uri: `${process.env.APP_BASE_URL}/auth/callback`, 
+    redirect_uri: `${process.env.APP_BASE_URL}/auth/callback`,
+    audience: process.env.AUTH0_AUDIENCE,
+    scope: 'openid profile email offline_access', 
   },
+  allowInsecureRequests: process.env.NODE_ENV !== 'production',
    async onCallback(error, context, session) {
     if (error) {
       console.error('Authentication error:', error);
@@ -24,3 +27,26 @@ export const auth0 = new Auth0Client({
     );
   }
 });
+
+const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
+
+/**
+ * Creates an authenticated fetcher instance for making requests to the Sirius backend.
+ * 
+ * This fetcher automatically handles:
+ * - Access token retrieval and injection
+ * - Token refresh if needed
+ * - Authorization headers
+ * 
+ * @example
+ * ```typescript
+ * const fetcher = await createBackendFetcher();
+ * const response = await fetcher.fetchWithAuth("/projects");
+ * const data = await response.json();
+ * ```
+ */
+export async function createBackendFetcher() {
+  return auth0.createFetcher(undefined, {
+    baseUrl: backendUrl
+  });
+}

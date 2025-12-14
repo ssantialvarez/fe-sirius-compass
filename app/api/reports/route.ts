@@ -1,21 +1,27 @@
+import { createBackendFetcher } from "@/lib/auth0";
 import { NextResponse } from "next/server";
 
-const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
-
 export async function GET(request: Request) {
+  const fetcher = await createBackendFetcher();
+
   try {
     const url = new URL(request.url);
     const projectName = url.searchParams.get("project_name");
     const limit = url.searchParams.get("limit");
 
-    const upstreamUrl = new URL(`${backendUrl}/reports`);
-    if (projectName) upstreamUrl.searchParams.set("project_name", projectName);
-    if (limit) upstreamUrl.searchParams.set("limit", limit);
+    const params = new URLSearchParams();
+    if (projectName) params.set("project_name", projectName);
+    if (limit) params.set("limit", limit);
 
-    const res = await fetch(upstreamUrl.toString(), { cache: "no-store" });
+    const endpoint = params.toString() ? `/reports?${params}` : "/reports";
+
+    const res = await fetcher.fetchWithAuth(endpoint, { 
+      cache: "no-store"
+    }, {audience: process.env.AUTH0_AUDIENCE});
     const data = await res.json().catch(() => []);
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
+    console.log(e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

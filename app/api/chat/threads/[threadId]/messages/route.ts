@@ -1,12 +1,12 @@
+import { createBackendFetcher } from "@/lib/auth0";
 import { NextResponse } from "next/server";
-
-const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ threadId: string }> },
 ) {
   const { threadId } = await params;
+  const fetcher = await createBackendFetcher();
   
   if (!threadId || threadId === "undefined") {
     return NextResponse.json({ error: "Invalid threadId" }, { status: 400 });
@@ -15,10 +15,11 @@ export async function GET(
     const url = new URL(request.url);
     const limit = url.searchParams.get("limit");
 
-    const upstreamUrl = new URL(`${backendUrl}/chat/threads/${threadId}/messages`);
-    if (limit) upstreamUrl.searchParams.set("limit", limit);
+    const endpoint = limit 
+      ? `/chat/threads/${threadId}/messages?limit=${limit}`
+      : `/chat/threads/${threadId}/messages`;
 
-    const res = await fetch(upstreamUrl.toString(), { cache: "no-store" });
+    const res = await fetcher.fetchWithAuth(endpoint, { cache: "no-store" });
     const data = await res.json().catch(() => []);
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
