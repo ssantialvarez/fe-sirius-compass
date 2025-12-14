@@ -4,7 +4,7 @@ const backendUrl = process.env.SIRIUS_BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(
   request: Request,
-  { params }: { params: { threadId: string } },
+  { params }: { params: Promise<{ threadId: string }> },
 ) {
   const { threadId } = await params;
   
