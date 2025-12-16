@@ -1,26 +1,52 @@
 'use client';
 import { User, Bell, Briefcase, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUser } from '@auth0/nextjs-auth0';
+import { Project } from '@/lib/types';
+import { HttpService } from '@/lib/service';
 
 export default function Settings() {
+  const [projects, setProjects] = useState([] as Project[]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useUser();
+  // TODO: por ahora fetchea de auth0 pero deberia fetchear de nuestra propia bd
   const [profile, setProfile] = useState({
-    name: 'Federico Martucci',
-    email: 'f.martucci@company.com',
+    name: user?.name,
+    email: user?.email,
     role: 'Project Manager',
   });
-
+  const fetchProjects = async () => {
+      setIsLoading(true);
+      try {
+        const data = await HttpService.getProjects();
+        setProjects(data);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    useEffect(() => {
+      fetchProjects();
+  
+      const handleRefresh = () => fetchProjects();
+      window.addEventListener('project-updated', handleRefresh);
+      return () => window.removeEventListener('project-updated', handleRefresh);
+    }, []);
+  
+  
+  /*
   const [notifications, setNotifications] = useState({
     weeklyReports: true,
     blockedAlerts: true,
     velocityAlerts: false,
     performanceInsights: true,
   });
-
+  */
   const [workspace, setWorkspace] = useState({
     defaultProject: 'Project Alpha',
     defaultTimeRange: 'Last 4 weeks',
@@ -79,8 +105,9 @@ export default function Settings() {
           </Button>
         </CardContent>
       </Card>
-
+      
       {/* Notification Preferences */}
+      {/*
       <Card className="bg-card border-border">
         <CardHeader className="flex flex-row items-center gap-2 pb-2">
           <Bell size={20} className="text-primary" />
@@ -176,7 +203,7 @@ export default function Settings() {
           </Button>
         </CardContent>
       </Card>
-
+      */}
       {/* Workspace Settings */}
       <Card className="bg-card border-border">
         <CardHeader className="flex flex-row items-center gap-2 pb-2">
@@ -196,10 +223,11 @@ export default function Settings() {
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Project Alpha">Project Alpha</SelectItem>
-                <SelectItem value="Project Beta">Project Beta</SelectItem>
-                <SelectItem value="Project Gamma">Project Gamma</SelectItem>
-                <SelectItem value="Project Delta">Project Delta</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.name}>
+                    {project.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

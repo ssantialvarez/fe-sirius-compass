@@ -694,64 +694,60 @@ export default function AnalysisChat() {
               Loading messages...
             </div>
           )}
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-3xl ${message.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2'
-                  : 'space-y-4'
-                  }`}
-              >
-                {message.role === 'assistant' && (
-                  <div
-                    className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2"
-                    title={formatTimestamp(message.createdAt)}
-                  >
-                    <div className="text-foreground">
-                      {(() => {
-                        const parsed = parseSyncBlocks(message.content);
-                        return (
-                          <>
-                            <MarkdownText content={parsed.text} />
-                            {parsed.syncRequest && (
-                              <div className="mt-4 flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartSync(parsed.syncRequest!)}
-                                  disabled={isStartingSync}
-                                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-60"
-                                >
-                                  {isStartingSync ? 'Starting sync…' : 'Sync now'}
-                                </button>
-                                <div className="text-xs text-muted-foreground">
-                                  Runs in background. You can keep chatting.
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                    {message.isStreaming && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 size={14} className="animate-spin" />
-                        Generating...
-                      </div>
-                    )}
+          {messages.map((message, index) => {
+            const showSeparator = index === 0 || !isSameDay(messages[index - 1].createdAt, message.createdAt);
+
+            return (
+              <div key={message.id}>
+                {showSeparator && (
+                  <div className="flex justify-center my-4">
+                    <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                      {formatDateSeparator(message.createdAt)}
+                    </span>
                   </div>
                 )}
 
-                {message.role === 'user' && (
-                  <p className="whitespace-pre-line" title={formatTimestamp(message.createdAt)}>
-                    {message.content}
-                  </p>
-                )}
+                <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-3xl ${message.role === 'user'
+                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2'
+                      : 'space-y-4'
+                      }`}
+                  >
+                    {message.role === 'assistant' && (
+                      <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2">
+                        <div className="text-foreground">
+                          <MarkdownText content={message.content} />
+                        </div>
+                        {message.isStreaming && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 size={14} className="animate-spin" />
+                            Generating...
+                          </div>
+                        )}
+                        {!message.isStreaming && message.createdAt && (
+                          <div className="text-[10px] text-muted-foreground text-right">
+                            {formatMessageTime(message.createdAt)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {message.role === 'user' && (
+                      <>
+                        <p className="whitespace-pre-line">
+                          {message.content}
+                        </p>
+                        <div className="text-[10px] text-primary-foreground/70 text-right">
+                          {formatMessageTime(message.createdAt)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={bottomRef} />
         </div>
 
@@ -794,4 +790,41 @@ export default function AnalysisChat() {
       />
     </div>
   );
+}
+
+// Helper to safely parse dates, assuming UTC if no offset provided
+function parseDate(dateStr: string) {
+  let finalStr = dateStr;
+  if (!dateStr.endsWith('Z') && !dateStr.includes('+')) {
+    finalStr += 'Z';
+  }
+  return new Date(finalStr);
+}
+
+function formatDateSeparator(dateStr?: string) {
+  if (!dateStr) return '';
+  const date = parseDate(dateStr);
+  const now = new Date();
+
+  // Normalize to start of day for comparison
+  const d = new Date(date); d.setHours(0, 0, 0, 0);
+  const n = new Date(now); n.setHours(0, 0, 0, 0);
+  const yesterday = new Date(n);
+  yesterday.setDate(n.getDate() - 1);
+
+  if (d.getTime() === n.getTime()) return 'Hoy';
+  if (d.getTime() === yesterday.getTime()) return 'Ayer';
+
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+}
+
+function formatMessageTime(dateStr?: string) {
+  if (!dateStr) return '';
+  const date = parseDate(dateStr);
+  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function isSameDay(d1?: string, d2?: string) {
+  if (!d1 || !d2) return false;
+  return parseDate(d1).toDateString() === parseDate(d2).toDateString();
 }

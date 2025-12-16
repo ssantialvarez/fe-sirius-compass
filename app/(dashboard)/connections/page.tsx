@@ -1,49 +1,29 @@
 'use client';
-import { Database, GitBranch, Trello } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConnectionsTable } from '@/components/connections/connections-table';
 import { HttpService } from '@/lib/service';
 import { useEffect, useState } from 'react';
 import { Connection } from '@/lib/types';
 import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Connections() {
-  const integrationTypes = [
-    {
-      id: 'repository',
-      name: 'Repository Service',
-      description: 'Connect code repositories (GitHub, GitLab, etc.)',
-      icon: GitBranch,
-      dataTypes: 'Commits, PRs, reviews, branches',
-      status: 'connected',
-    },
-    {
-      id: 'board',
-      name: 'Task Board Service',
-      description: 'Connect project management tools (Jira, Trello, etc.)',
-      icon: Trello,
-      dataTypes: 'Tickets, statuses, story points, sprints',
-      status: 'connected',
-    },
-    {
-      id: 'other',
-      name: 'Other Services',
-      description: 'Additional data sources and integrations',
-      icon: Database,
-      dataTypes: 'Custom data sources',
-      status: 'not-connected',
-    },
-  ];
+
   const [activeConnections, setConnections] = useState([] as Connection[]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchConnections = async () => {
-    const data = await HttpService.getConnections();
-    setConnections(data);
+    setIsLoading(true);
+    try {
+      const data = await HttpService.getConnections();
+      setConnections(data);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchConnections();
 
     const handleRefresh = () => fetchConnections();
@@ -71,7 +51,7 @@ export default function Connections() {
       {/* Active connections table */}
       <div>
         <h3 className="text-foreground mb-4 text-xl font-semibold">Active Connections</h3>
-        <ConnectionsTable data={activeConnections} />
+        <ConnectionsTable data={activeConnections} isLoading={isLoading} />
       </div>
     </div>
   );

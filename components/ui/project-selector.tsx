@@ -36,7 +36,7 @@ export const ProjectSelector = () => {
             <SelectItem
               key={p.id}
               value={p.id}
-              className="hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white cursor-pointer"
+              className="hover:bg-white/5 hover:text-[--var-primary] focus:bg-white/5 focus:text-[--var-primary] cursor-pointer"
             >
               {p.name}
             </SelectItem>

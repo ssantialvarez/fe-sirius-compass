@@ -1,8 +1,9 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MarkdownText } from '@/components/ui/markdown-text';
-import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle, Trash2 } from 'lucide-react';
+import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +13,27 @@ import { Label } from '@/components/ui/label';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
 import type { Report } from '@/lib/types';
+
+function stripMarkdown(input: string) {
+  return input
+    .replace(/```[\s\S]*?```/g, (block) => {
+      const inner = block.replace(/^```\w*\n?/, '').replace(/```$/, '');
+      return `\n\n${inner.trim()}\n\n`;
+    })
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1 ($2)')
+    .replace(/^\s*[-*]\s+/gm, '• ')
+    .trim();
+}
+
+function toSafeFilenamePart(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 80);
+}
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -47,9 +69,16 @@ export default function Reports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+  const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
   const { currentProject } = useProjectStore();
 
   const projectName = currentProject?.name;
+
+  const canDownload = useMemo(() => {
+    // We can still generate PDFs without a selected project, but the UI is more predictable
+    // if we keep the action available only when we have data.
+    return reports.length > 0;
+  }, [reports.length]);
 
   useEffect(() => {
     const load = async () => {
@@ -64,6 +93,80 @@ export default function Reports() {
 
 
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+
+  const handleDownloadPdf = async (report: Report) => {
+    try {
+      setDownloadingReportId(report.id);
+      const { jsPDF } = await import('jspdf');
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 48;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const maxWidth = pageWidth - margin * 2;
+      const lineHeight = 16;
+
+      let y = margin;
+
+      const ensureSpace = (needed: number) => {
+        if (y + needed <= pageHeight - margin) return;
+        doc.addPage();
+        y = margin;
+      };
+
+      const writeHeading = (text: string) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        ensureSpace(24);
+        doc.text(text, margin, y);
+        y += 24;
+      };
+
+      const writeLabelValue = (label: string, value: string) => {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        ensureSpace(lineHeight);
+        doc.text(`${label}:`, margin, y);
+
+        doc.setFont('helvetica', 'normal');
+        const labelWidth = doc.getTextWidth(`${label}: `);
+        const lines = doc.splitTextToSize(value || '-', maxWidth - labelWidth);
+        doc.text(lines, margin + labelWidth, y);
+        y += lineHeight * Math.max(1, lines.length);
+      };
+
+      const writeParagraph = (text: string) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text || '-', maxWidth);
+        for (const line of lines) {
+          ensureSpace(lineHeight);
+          doc.text(line, margin, y);
+          y += lineHeight;
+        }
+      };
+
+      writeHeading('Sirius Compass — Weekly Report');
+      writeLabelValue('Week', report.week);
+      writeLabelValue('Project', report.project);
+      writeLabelValue('Repository', report.repository);
+      writeLabelValue('Status', report.status);
+      writeLabelValue('Generated', report.created_at);
+      y += 12;
+
+      writeHeading('Summary');
+      writeParagraph(stripMarkdown(report.summary));
+
+      const filename = `report-${toSafeFilenamePart(report.project)}-${toSafeFilenamePart(report.week)}.pdf`;
+      doc.save(filename);
+      toast.success('PDF downloaded');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setDownloadingReportId(null);
+    }
+  };
 
   const handleDeleteReport = async () => {
     if (!reportToDelete) return;
@@ -198,9 +301,15 @@ export default function Reports() {
                     variant="ghost"
                     size="icon"
                     className="text-muted-foreground hover:text-foreground"
-                    disabled
+                    disabled={!canDownload || downloadingReportId === report.id}
+                    onClick={() => handleDownloadPdf(report)}
+                    aria-label="Download report PDF"
                   >
-                    <Download size={18} />
+                    {downloadingReportId === report.id ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Download size={18} />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
