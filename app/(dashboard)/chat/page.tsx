@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
-import { Send, Users, TrendingUp, Clock, Loader2, Trash2 } from 'lucide-react';
+import { Send, Users, TrendingUp, Clock, Loader2, Trash2, Edit } from 'lucide-react';
 import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
+import { RenameThreadModal } from '@/components/ui/rename-thread-modal';
 import { toast } from 'sonner';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
@@ -264,6 +265,7 @@ export default function AnalysisChat() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [threadToDelete, setThreadToDelete] = useState<ChatThread | null>(null);
+  const [threadToRename, setThreadToRename] = useState<ChatThread | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -287,12 +289,6 @@ export default function AnalysisChat() {
     if (!selectedThreadId) return null;
     return threads.find((t) => t.thread_id === selectedThreadId) ?? null;
   }, [selectedThreadId, threads]);
-
-  const quickActions = [
-    { label: 'Velocity trend', icon: TrendingUp },
-    { label: 'Blocked work', icon: Clock },
-    { label: 'Developer insights', icon: Users },
-  ];
 
   const refreshThreads = async () => {
     try {
@@ -588,6 +584,23 @@ export default function AnalysisChat() {
     setThreadToDelete(null);
   };
 
+  const handleRenameThread = async (title: string) => {
+    if (!threadToRename) return;
+    const id = threadToRename.thread_id;
+    const success = await HttpService.renameChatThread(id, title);
+    if (success) {
+      setThreads((prev) => prev.map((t) => (t.thread_id === id ? { ...t, title, updated_at: new Date().toISOString() } : t)));
+      if (selectedThreadId === id) {
+        // refresh messages or just rely on thread title update
+        await refreshThreads();
+      }
+      toast.success('Conversation renamed');
+    } else {
+      toast.error('Failed to rename conversation');
+    }
+    setThreadToRename(null);
+  };
+
   return (
     <div className="h-[calc(100vh-4rem)] flex gap-6 p-6">
       {/* Left sidebar - Conversations */}
@@ -620,16 +633,29 @@ export default function AnalysisChat() {
                 <p className="text-xs text-muted-foreground">{formatRelative(thread.updated_at)}</p>
               </button>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setThreadToDelete(thread);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-md transition-all"
-                title="Delete conversation"
-              >
-                <Trash2 size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setThreadToRename(thread);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent/10 text-muted-foreground hover:text-foreground rounded-md transition-all"
+                  title="Rename conversation"
+                >
+                  <Edit size={14} />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setThreadToDelete(thread);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-md transition-all"
+                  title="Delete conversation"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
 
@@ -787,6 +813,13 @@ export default function AnalysisChat() {
         onConfirm={handleDeleteThread}
         title="Delete Conversation"
         description="Are you sure you want to delete this conversation? This action cannot be undone."
+      />
+
+      <RenameThreadModal
+        isOpen={!!threadToRename}
+        onClose={() => setThreadToRename(null)}
+        onConfirm={handleRenameThread}
+        currentTitle={threadToRename?.title ?? ''}
       />
     </div>
   );

@@ -92,6 +92,26 @@ export class HttpService {
     }
   }
 
+  static async renameChatThread(threadId: string, title: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/chat/threads/${threadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Failed to rename thread (${response.status})`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error renaming chat thread:', error);
+      return false;
+    }
+  }
+
   static async getReports(projectName?: string, limit = 50): Promise<Report[]> {
     try {
       const url = new URL('/api/reports', window.location.origin);
