@@ -73,7 +73,7 @@ export default function LoginPage() {
                 <CardDescription className='text-[var(--color-text-secondary)]'>Access your engineering intelligence platform</CardDescription>
             </CardHeader>
             <CardContent>
-                <form>
+                <form onSubmit={handleSubmit}>
                     <div className="space-y-2">
                     <label className="text-sm text-[var(--color-text-secondary)]">Email</label>
                     <div className="relative">

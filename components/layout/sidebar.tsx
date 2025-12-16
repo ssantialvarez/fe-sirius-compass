@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Globe, MessageSquare, FileText, Settings } from 'lucide-react';
+import { Globe, MessageSquare, FileText, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ModeToggle } from '../mode-toggle';
 
 const sidebarItems = [
   /*{

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
-import { Send, Users, TrendingUp, Clock, Loader2, Trash2 } from 'lucide-react';
+import { Send, Loader2, Trash2 } from 'lucide-react';
 import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
 import { toast } from 'sonner';
 import { HttpService } from '@/lib/service';
@@ -22,13 +22,6 @@ function createThreadId() {
     return crypto.randomUUID();
   }
   return `thread_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-function formatTimestamp(isoDate?: string) {
-  if (!isoDate) return '';
-  const dt = new Date(isoDate);
-  if (Number.isNaN(dt.getTime())) return isoDate;
-  return dt.toLocaleString();
 }
 
 function formatRelative(isoDate: string) {
@@ -245,12 +238,6 @@ export default function AnalysisChat() {
     return threads.find((t) => t.thread_id === selectedThreadId) ?? null;
   }, [selectedThreadId, threads]);
 
-  const quickActions = [
-    { label: 'Velocity trend', icon: TrendingUp },
-    { label: 'Blocked work', icon: Clock },
-    { label: 'Developer insights', icon: Users },
-  ];
-
   const refreshThreads = async () => {
     try {
       const data = await HttpService.getChatThreads();
@@ -307,7 +294,6 @@ export default function AnalysisChat() {
 
   useEffect(() => {
     refreshThreads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {

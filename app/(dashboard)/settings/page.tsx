@@ -1,5 +1,5 @@
 'use client';
-import { User, Bell, Briefcase, Save } from 'lucide-react';
+import { User, Briefcase, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,6 @@ import { HttpService } from '@/lib/service';
 
 export default function Settings() {
   const [projects, setProjects] = useState([] as Project[]);
-  const [isLoading, setIsLoading] = useState(true);
   const { user } = useUser();
   // TODO: por ahora fetchea de auth0 pero deberia fetchear de nuestra propia bd
   const [profile, setProfile] = useState({
@@ -21,16 +20,17 @@ export default function Settings() {
     role: 'Project Manager',
   });
   const fetchProjects = async () => {
-      setIsLoading(true);
       try {
         const data = await HttpService.getProjects();
         setProjects(data);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+        console.error('Error fetching projects:', e);
+        setProjects([]);
       }
     };
   
     useEffect(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchProjects();
   
       const handleRefresh = () => fetchProjects();

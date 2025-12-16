@@ -1,12 +1,11 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { ConnectionsTable } from '@/components/connections/connections-table';
 import { HttpService } from '@/lib/service';
 import { useEffect, useState } from 'react';
 import { Connection } from '@/lib/types';
 import { AddConnectionDialog } from '@/components/connections/add-connection-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SyncJobsWatcher } from '@/components/connections/sync-jobs-watcher';
 
 export default function Connections() {
 
@@ -33,6 +32,7 @@ export default function Connections() {
 
   return (
     <div className="space-y-8 p-8">
+      <SyncJobsWatcher />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">

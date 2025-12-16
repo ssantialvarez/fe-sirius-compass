@@ -1,7 +1,7 @@
 import { createBackendFetcher } from "@/lib/auth0";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET() {
   const fetcher = await createBackendFetcher();
 
   try {

@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Connection } from "@/lib/types"
-import { GitBranch, Trello, RefreshCw, Settings, CheckCircle, Loader, XCircle } from "lucide-react"
+import { GitBranch, Trello, RefreshCw, Sparkles, CheckCircle, Loader, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { HttpService } from "@/lib/service"
 import { useUser } from "@auth0/nextjs-auth0"
+import { useSyncJobsStore } from "@/lib/sync-jobs"
 
 interface TableHeaderProps {
   children: React.ReactNode
@@ -20,6 +21,37 @@ function TableHeader({ children, className }: TableHeaderProps) {
       {children}
     </div>
   )
+}
+
+function ConnectionStatusCell({ connection }: { connection: Connection }) {
+  const job = useSyncJobsStore((s) => s.jobsByConnectionId[connection.id])
+  const status = job && (job.status === "queued" || job.status === "running") ? "syncing" : connection.status
+
+  switch (status) {
+    case 'active':
+      return (
+        <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-1/20 text-chart-1 text-xs w-fit">
+          <CheckCircle size={12} />
+          Active
+        </span>
+      )
+    case 'syncing':
+      return (
+        <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-4/20 text-chart-4 text-xs w-fit">
+          <Loader size={12} className="animate-spin" />
+          Syncing
+        </span>
+      )
+    case 'error':
+      return (
+        <span className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive text-xs w-fit">
+          <XCircle size={12} />
+          Error
+        </span>
+      )
+    default:
+      return null
+  }
 }
 
 export const columns: ColumnDef<Connection>[] = [
@@ -58,33 +90,7 @@ export const columns: ColumnDef<Connection>[] = [
     accessorKey: "status",
     header: () => <TableHeader>Status</TableHeader>,
     cell: ({ row }) => {
-      const status = row.getValue("status") as string
-
-      switch (status) {
-        case 'active':
-          return (
-            <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-1/20 text-chart-1 text-xs w-fit">
-              <CheckCircle size={12} />
-              Active
-            </span>
-          );
-        case 'syncing':
-          return (
-            <span className="flex items-center gap-1 px-2 py-1 rounded bg-chart-4/20 text-chart-4 text-xs w-fit">
-              <Loader size={12} className="animate-spin" />
-              Syncing
-            </span>
-          );
-        case 'error':
-          return (
-            <span className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive text-xs w-fit">
-              <XCircle size={12} />
-              Error
-            </span>
-          );
-        default:
-          return null;
-      }
+      return <ConnectionStatusCell connection={row.original} />
     },
   },
   {
@@ -111,8 +117,22 @@ import { toast } from "sonner"
 
 function ConnectionActions({ connection }: { connection: Connection }) {
   const { user } = useUser()
+  const job = useSyncJobsStore((s) => s.jobsByConnectionId[connection.id])
+  const startConnectionSync = useSyncJobsStore((s) => s.startConnectionSync)
   const [isRunning, setIsRunning] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+  const isSyncing = job ? job.status === "queued" || job.status === "running" : false
+
+  const handleSync = async () => {
+    const res = await startConnectionSync(connection)
+    if (!res) {
+      toast.error("Failed to start sync")
+      return
+    }
+    toast.message("Sync started")
+    // The worker will poll in background and refresh on completion.
+  }
 
   const handleAnalyze = async () => {
     if (connection.type !== "Repository") return
@@ -128,7 +148,14 @@ function ConnectionActions({ connection }: { connection: Connection }) {
   }
 
   const handleDelete = async () => {
-    const success = await HttpService.deleteConnection(connection.id, connection.type as any)
+    const type = connection.type === "Repository" || connection.type === "Board" ? connection.type : null
+    if (!type) {
+      toast.error("Unsupported connection type")
+      setIsDeleteOpen(false)
+      return
+    }
+
+    const success = await HttpService.deleteConnection(connection.id, type)
     if (success) {
       toast.success("Connection deleted")
       // Trigger refresh in parent
@@ -146,20 +173,21 @@ function ConnectionActions({ connection }: { connection: Connection }) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
-          onClick={handleAnalyze}
-          disabled={isRunning || connection.type !== "Repository"}
-          title={connection.type === "Repository" ? "Run analysis" : "Not supported"}
+          onClick={handleSync}
+          disabled={isSyncing}
+          title={isSyncing ? "Sync in progress" : "Sync connection"}
         >
-          <RefreshCw size={16} className={isRunning ? "animate-spin" : ""} />
+          <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
         </Button>
         <Button
           variant="ghost"
           size="icon"
           className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
-          disabled
-          title="Settings (coming soon)"
+          onClick={handleAnalyze}
+          disabled={isRunning || connection.type !== "Repository"}
+          title={connection.type === "Repository" ? "Run analysis" : "Not supported"}
         >
-          <Settings size={16} />
+          <Sparkles size={16} className={isRunning ? "animate-pulse" : ""} />
         </Button>
         <Button
           variant="ghost"
