@@ -496,13 +496,13 @@ export default function Settings() {
               </TableHeader>
               <TableBody>
                 {isLoadingGuests ? (
-                  <TableRow>
+                  <TableRow key="guests-loading">
                     <TableCell colSpan={3} className="text-muted-foreground">
                       Loading guests…
                     </TableCell>
                   </TableRow>
                 ) : projectGuests.length === 0 ? (
-                  <TableRow>
+                  <TableRow key="guests-empty">
                     <TableCell colSpan={3} className="text-muted-foreground">
                       No guests yet.
                     </TableCell>
@@ -510,8 +510,9 @@ export default function Settings() {
                 ) : (
                   projectGuests.map((pg) => {
                     const email = pg.guest?.email ?? pg.guest_email ?? pg.email;
+                    const rowKey = String(pg.guest_id ?? email ?? pg.guest_email ?? pg.email ?? "unknown");
                     return (
-                      <TableRow key={pg.guest_id}>
+                      <TableRow key={rowKey}>
                         <TableCell>{email ?? pg.guest_id}</TableCell>
                         <TableCell className="capitalize">{pg.role}</TableCell>
                         <TableCell className="text-right">
