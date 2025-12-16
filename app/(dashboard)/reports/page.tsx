@@ -68,7 +68,8 @@ export default function Reports() {
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isRisksOpen, setIsRisksOpen] = useState(false);
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
   const { currentProject } = useProjectStore();
 
@@ -370,20 +371,35 @@ export default function Reports() {
 
                   {/* Risks & Alerts */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ChevronRight size={20} className="text-primary" />
+                    <button
+                      onClick={() => setIsRisksOpen(!isRisksOpen)}
+                      className="flex items-center gap-2 hover:bg-accent/50 p-1 -ml-1 pr-3 rounded-lg transition-colors"
+                    >
+                      <ChevronRight
+                        size={20}
+                        className={`text-primary transition-transform duration-200 ${isRisksOpen ? 'rotate-90' : ''}`}
+                      />
                       <h3 className="text-foreground font-medium">Risks & Alerts</h3>
-                    </div>
-                    <div className="pl-7 space-y-2">
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20">
-                        <AlertCircle size={18} className="text-chart-2 mt-0.5" />
-                        <p className="text-muted-foreground">
-                          {report.status === 'at-risk'
-                            ? 'This report contains risk signals. Use the chat to investigate details.'
-                            : 'No major risks detected for this report.'}
-                        </p>
+                    </button>
+
+                    {isRisksOpen && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="pl-7 space-y-2">
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                            <AlertCircle size={18} className="text-yellow-600 mt-0.5 shrink-0" />
+                            <div className="text-muted-foreground text-sm w-full">
+                              {report.risk_details ? (
+                                <MarkdownText content={report.risk_details} />
+                              ) : report.status === 'at-risk' ? (
+                                'This report contains risk signals. Use the chat to investigate details.'
+                              ) : (
+                                'No major risks detected for this report.'
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
