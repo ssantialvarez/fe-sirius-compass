@@ -177,7 +177,7 @@ export class HttpService {
       return data as SyncRun;
     } catch (error) {
       console.error("Error starting sync:", error);
-      return null;
+      throw error;
     }
   }
 

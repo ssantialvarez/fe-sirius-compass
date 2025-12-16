@@ -1,5 +1,12 @@
 "use client"
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 import { useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Connection } from "@/lib/types"
@@ -77,10 +84,19 @@ export const columns: ColumnDef<Connection>[] = [
           );
         case 'error':
           return (
-            <span className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive text-xs w-fit">
-              <XCircle size={12} />
-              Error
-            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive text-xs w-fit cursor-help">
+                    <XCircle size={12} />
+                    Error
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{row.original.last_error || "Unknown error occurred"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         default:
           return null;
@@ -122,23 +138,26 @@ function ConnectionActions({ connection }: { connection: Connection }) {
       return
     }
     setIsSyncing(true)
-    const run = await HttpService.startSync({
-      project_name: connection.project,
-      repo_name: connection.type === "Repository" ? connection.name : undefined,
-      providers: connection.type === "Repository" ? ["github", "linear"] : ["linear"],
-      full_history: false,
-      max_commits: 300,
-      max_prs: 200,
-      max_tickets: 200,
-    })
-    setIsSyncing(false)
+    try {
+      const run = await HttpService.startSync({
+        project_name: connection.project,
+        repo_name: connection.type === "Repository" ? connection.name : undefined,
+        providers: connection.type === "Repository" ? ["github"] : ["linear"],
+        full_history: false,
+        max_commits: 300,
+        max_prs: 200,
+        max_tickets: 200,
+      })
 
-    if (run?.id) {
-      toast.success(`Sync started (run: ${run.id})`)
-      window.dispatchEvent(new Event('connection-updated'))
-      return
+      if (run?.id) {
+        toast.success(`Sync started (run: ${run.id})`)
+        window.dispatchEvent(new Event('connection-updated'))
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to start sync")
+    } finally {
+      setIsSyncing(false)
     }
-    toast.error("Failed to start sync")
   }
 
   const handleAnalyze = async () => {

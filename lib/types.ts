@@ -10,6 +10,7 @@ export interface Connection {
   project: string;
   status: string;
   lastSync: string;
+  last_error?: string;
 }
 
 export interface ChatThread {
