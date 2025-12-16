@@ -3,6 +3,43 @@ export interface Project {
   name: string;
 }
 
+export type ProjectGuestRole = "viewer" | "editor";
+
+export interface InviteGuestRequest {
+  project_id: string;
+  email: string;
+  role: ProjectGuestRole;
+}
+
+export interface GuestDTO {
+  id: string;
+  email: string;
+  external_user_id?: string | null;
+  created_at?: string;
+  claimed_at?: string | null;
+}
+
+export interface ProjectGuestDTO {
+  project_id: string;
+  guest_id: string;
+  role: ProjectGuestRole;
+  guest?: GuestDTO;
+  guest_email?: string;
+  email?: string;
+  invited_by_user_id?: string | null;
+  created_at?: string;
+}
+
+export interface UserSettings {
+  defaultProjectId?: string | null;
+  defaultTimeRange?: string;
+}
+
+export interface SaveUserSettingsPayload {
+  defaultProjectId: string | null;
+  defaultTimeRange: string;
+}
+
 export interface Connection {
   id: number;
   type: string;
