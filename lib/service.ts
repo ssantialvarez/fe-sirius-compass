@@ -18,6 +18,24 @@ export class HttpService {
     return typeof value === "object" && value !== null;
   }
 
+  private static readonly allowedTimeRanges = new Set(["7d", "30d", "90d", "180d", "365d", "all"]);
+
+  private static normalizeTimeRange(value: string): string {
+    const trimmed = value.trim();
+    if (this.allowedTimeRanges.has(trimmed)) return trimmed;
+
+    // Back-compat with older UI labels.
+    const legacyMap: Record<string, string> = {
+      "Last 4 weeks": "30d",
+      "Last 8 weeks": "90d",
+      "Last quarter": "90d",
+      "This sprint": "7d",
+    };
+    if (trimmed in legacyMap) return legacyMap[trimmed]!;
+
+    return "30d";
+  }
+
   private static async readErrorMessage(response: Response): Promise<string> {
     const text = await response.text().catch(() => "");
     if (text) return text;
@@ -124,9 +142,12 @@ export class HttpService {
         (typeof raw.default_project_id === "string" ? raw.default_project_id : undefined) ??
         null;
 
-      const defaultTimeRange =
+      const defaultTimeRangeRaw =
         (typeof raw.defaultTimeRange === "string" ? raw.defaultTimeRange : undefined) ??
         (typeof raw.default_time_range === "string" ? raw.default_time_range : undefined);
+
+      const defaultTimeRange =
+        typeof defaultTimeRangeRaw === "string" ? this.normalizeTimeRange(defaultTimeRangeRaw) : undefined;
 
       return {
         defaultProjectId,
@@ -143,7 +164,7 @@ export class HttpService {
       // Send snake_case to match typical Python backends.
       const body = {
         default_project_id: payload.defaultProjectId,
-        default_time_range: payload.defaultTimeRange,
+        default_time_range: this.normalizeTimeRange(payload.defaultTimeRange),
       };
 
       const response = await fetch("/api/user-settings", {

@@ -102,7 +102,7 @@ export default function Settings() {
   */
   const [workspace, setWorkspace] = useState({
     defaultProjectId: '',
-    defaultTimeRange: 'Last 4 weeks',
+    defaultTimeRange: '30d',
   });
 
   const fetchProjectGuests = async (projectId: string) => {
@@ -360,10 +360,12 @@ export default function Settings() {
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Last 4 weeks">Last 4 weeks</SelectItem>
-                <SelectItem value="Last 8 weeks">Last 8 weeks</SelectItem>
-                <SelectItem value="Last quarter">Last quarter</SelectItem>
-                <SelectItem value="This sprint">This sprint</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+                <SelectItem value="180d">Last 180 days</SelectItem>
+                <SelectItem value="365d">Last 365 days</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
           </div>
