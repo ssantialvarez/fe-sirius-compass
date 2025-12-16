@@ -84,6 +84,10 @@ export function AddConnectionDialog({
     }
 
     if (selected === "board") {
+      if (!repoUrl.trim()) {
+        setError("Linear URL is required.")
+        return
+      }
       if (!linearApiKey.trim()) {
         setError("Linear API key is required.")
         return
@@ -98,7 +102,7 @@ export function AddConnectionDialog({
     const created = await HttpService.createConnection({
       type: selected === "repository" ? "repository" : "linear",
       project_name: resolvedProjectName,
-      repo_url: selected === "repository" ? repoUrl.trim() : undefined,
+      repo_url: repoUrl.trim(),
       github_token: selected === "repository" && githubToken.trim() ? githubToken.trim() : undefined,
       linear_api_key: selected === "board" ? linearApiKey.trim() : undefined,
       linear_team_key: selected === "board" ? linearTeamKey.trim() : undefined,
@@ -188,7 +192,7 @@ export function AddConnectionDialog({
 
                 <div className="space-y-3">
                   <Label htmlFor="connection-url">
-                    {selected === "repository" ? "Repository URL" : "Board URL"}
+                    {selected === "repository" ? "Repository URL" : "Linear URL"}
                   </Label>
                   <div className="relative">
                     <div className="absolute left-3 top-2.5 text-muted-foreground">
@@ -205,7 +209,7 @@ export function AddConnectionDialog({
                   <p className="text-xs text-muted-foreground">
                     {selected === "repository" 
                       ? "We'll need read access to analyze code metrics." 
-                      : "We'll sync tickets and sprint data."}
+                      : "We'll sync tickets and sprint data from Linear."}
                   </p>
                 </div>
 

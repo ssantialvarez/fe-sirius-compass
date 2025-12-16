@@ -1,17 +1,40 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MarkdownText } from '@/components/ui/markdown-text';
-import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle, Trash2 } from 'lucide-react';
+import { Filter, Download, Eye, ChevronRight, Calendar, AlertCircle, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
 import type { Report } from '@/lib/types';
+
+function stripMarkdown(input: string) {
+  return input
+    .replace(/```[\s\S]*?```/g, (block) => {
+      const inner = block.replace(/^```\w*\n?/, '').replace(/```$/, '');
+      return `\n\n${inner.trim()}\n\n`;
+    })
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1 ($2)')
+    .replace(/^\s*[-*]\s+/gm, '• ')
+    .trim();
+}
+
+function toSafeFilenamePart(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 80);
+}
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -46,10 +69,72 @@ export default function Reports() {
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isRisksOpen, setIsRisksOpen] = useState(false);
+  const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
+
+  // Filter States
+  const [timeValue, setTimeValue] = useState<number>(3);
+  const [timeUnit, setTimeUnit] = useState<string>('months'); // 'minutes' | 'hours' | 'days' | 'months'
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const { currentProject } = useProjectStore();
 
   const projectName = currentProject?.name;
+
+  const filteredReports = useMemo(() => {
+    return reports.filter((report) => {
+      // 1. Status Filter
+      if (statusFilter !== 'all' && report.status !== statusFilter) {
+        return false;
+      }
+
+      // 2. Time Range Filter (Robust Diff Logic)
+      if (!timeValue || timeValue <= 0) return true; // Show all if invalid/empty input
+
+      // Handle Naive UTC string from backend
+      let dateStr = report.created_at;
+      if (dateStr && !dateStr.endsWith('Z') && !dateStr.includes('+')) {
+        dateStr += 'Z';
+      }
+
+      const reportDate = new Date(dateStr);
+      const now = new Date();
+
+      if (isNaN(reportDate.getTime())) return true; // Fail safe
+
+      const diffMs = now.getTime() - reportDate.getTime();
+      let limitMs = 0;
+
+      switch (timeUnit) {
+        case 'minutes':
+          limitMs = timeValue * 60 * 1000;
+          break;
+        case 'hours':
+          limitMs = timeValue * 60 * 60 * 1000;
+          break;
+        case 'days':
+          limitMs = timeValue * 24 * 60 * 60 * 1000;
+          break;
+        case 'months':
+          limitMs = timeValue * 30 * 24 * 60 * 60 * 1000; // Approx 30 days
+          break;
+        default:
+          limitMs = Infinity;
+      }
+
+      // If diffMs is negative (clock skew), treat as "just now" (so it matches)
+      if (diffMs < 0) return true;
+
+      return diffMs <= limitMs;
+    });
+  }, [reports, statusFilter, timeValue, timeUnit]);
+
+  const canDownload = useMemo(() => {
+    // We can still generate PDFs without a selected project, but the UI is more predictable
+    // if we keep the action available only when we have data.
+    return reports.length > 0;
+  }, [reports.length]);
 
   useEffect(() => {
     const load = async () => {
@@ -64,6 +149,80 @@ export default function Reports() {
 
 
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+
+  const handleDownloadPdf = async (report: Report) => {
+    try {
+      setDownloadingReportId(report.id);
+      const { jsPDF } = await import('jspdf');
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 48;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const maxWidth = pageWidth - margin * 2;
+      const lineHeight = 16;
+
+      let y = margin;
+
+      const ensureSpace = (needed: number) => {
+        if (y + needed <= pageHeight - margin) return;
+        doc.addPage();
+        y = margin;
+      };
+
+      const writeHeading = (text: string) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        ensureSpace(24);
+        doc.text(text, margin, y);
+        y += 24;
+      };
+
+      const writeLabelValue = (label: string, value: string) => {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        ensureSpace(lineHeight);
+        doc.text(`${label}:`, margin, y);
+
+        doc.setFont('helvetica', 'normal');
+        const labelWidth = doc.getTextWidth(`${label}: `);
+        const lines = doc.splitTextToSize(value || '-', maxWidth - labelWidth);
+        doc.text(lines, margin + labelWidth, y);
+        y += lineHeight * Math.max(1, lines.length);
+      };
+
+      const writeParagraph = (text: string) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text || '-', maxWidth);
+        for (const line of lines) {
+          ensureSpace(lineHeight);
+          doc.text(line, margin, y);
+          y += lineHeight;
+        }
+      };
+
+      writeHeading('Sirius Compass — Weekly Report');
+      writeLabelValue('Week', report.week);
+      writeLabelValue('Project', report.project);
+      writeLabelValue('Repository', report.repository);
+      writeLabelValue('Status', report.status);
+      writeLabelValue('Generated', report.created_at);
+      y += 12;
+
+      writeHeading('Summary');
+      writeParagraph(stripMarkdown(report.summary));
+
+      const filename = `report-${toSafeFilenamePart(report.project)}-${toSafeFilenamePart(report.week)}.pdf`;
+      doc.save(filename);
+      toast.success('PDF downloaded');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setDownloadingReportId(null);
+    }
+  };
 
   const handleDeleteReport = async () => {
     if (!reportToDelete) return;
@@ -85,42 +244,41 @@ export default function Reports() {
     <div className="space-y-8 p-8">
       {/* Filters */}
       <Card className="bg-card border-border">
-        <CardContent className="p-6">
+        <CardContent className="px-8 flex gap-[40vw]">
           <div className="flex items-center gap-4 mb-4">
             <Filter size={20} className="text-muted-foreground" />
             <h3 className="text-foreground font-medium">Filters</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Project</Label>
-              <Select defaultValue="current">
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">{projectName ?? 'Current project'}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="flex gap-8">
             <div className="space-y-2">
               <Label className="text-muted-foreground">Time Range</Label>
-              <Select defaultValue="3months">
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3months">Last 3 months</SelectItem>
-                  <SelectItem value="6months">Last 6 months</SelectItem>
-                  <SelectItem value="year">Last year</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-lg text-muted-foreground whitespace-nowrap">Last</span>
+                <Input
+                  type="number"
+                  min={1}
+                  className="w-20"
+                  value={timeValue}
+                  onChange={(e) => setTimeValue(parseInt(e.target.value) || 0)}
+                />
+                <Select value={timeUnit} onValueChange={setTimeUnit}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minutes">Minutes</SelectItem>
+                    <SelectItem value="hours">Hours</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-muted-foreground">Status</Label>
-              <Select defaultValue="all">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -133,13 +291,6 @@ export default function Reports() {
               </Select>
             </div>
           </div>
-
-          <div className="flex gap-3 mt-6">
-            <Button disabled>Apply Filters</Button>
-            <Button variant="outline" disabled>
-              Clear
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -149,13 +300,13 @@ export default function Reports() {
           <div className="text-sm text-muted-foreground">Loading reports...</div>
         )}
 
-        {!isLoading && reports.length === 0 && (
+        {!isLoading && filteredReports.length === 0 && (
           <div className="text-sm text-muted-foreground">
-            No reports found. Run an analysis to generate reports.
+            No reports found matching your criteria.
           </div>
         )}
 
-        {reports.map((report) => (
+        {filteredReports.map((report) => (
           <div key={report.id} className="contents">
             <Card
               className={`bg-card border-border hover:border-primary/50 transition-all ${selectedReportId === report.id ? 'border-primary ring-1 ring-primary' : ''
@@ -198,9 +349,15 @@ export default function Reports() {
                     variant="ghost"
                     size="icon"
                     className="text-muted-foreground hover:text-foreground"
-                    disabled
+                    disabled={!canDownload || downloadingReportId === report.id}
+                    onClick={() => handleDownloadPdf(report)}
+                    aria-label="Download report PDF"
                   >
-                    <Download size={18} />
+                    {downloadingReportId === report.id ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Download size={18} />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -261,20 +418,35 @@ export default function Reports() {
 
                   {/* Risks & Alerts */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ChevronRight size={20} className="text-primary" />
+                    <button
+                      onClick={() => setIsRisksOpen(!isRisksOpen)}
+                      className="flex items-center gap-2 hover:bg-accent/50 p-1 -ml-1 pr-3 rounded-lg transition-colors"
+                    >
+                      <ChevronRight
+                        size={20}
+                        className={`text-primary transition-transform duration-200 ${isRisksOpen ? 'rotate-90' : ''}`}
+                      />
                       <h3 className="text-foreground font-medium">Risks & Alerts</h3>
-                    </div>
-                    <div className="pl-7 space-y-2">
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-2/10 border border-chart-2/20">
-                        <AlertCircle size={18} className="text-chart-2 mt-0.5" />
-                        <p className="text-muted-foreground">
-                          {report.status === 'at-risk'
-                            ? 'This report contains risk signals. Use the chat to investigate details.'
-                            : 'No major risks detected for this report.'}
-                        </p>
+                    </button>
+
+                    {isRisksOpen && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="pl-7 space-y-2">
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                            <AlertCircle size={18} className="text-yellow-600 mt-0.5 shrink-0" />
+                            <div className="text-muted-foreground text-sm w-full">
+                              {report.risk_details ? (
+                                <MarkdownText content={report.risk_details} />
+                              ) : report.status === 'at-risk' ? (
+                                'This report contains risk signals. Use the chat to investigate details.'
+                              ) : (
+                                'No major risks detected for this report.'
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

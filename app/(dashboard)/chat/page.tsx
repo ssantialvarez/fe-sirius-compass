@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
-import { Send, Users, TrendingUp, Clock, Loader2, Trash2 } from 'lucide-react';
+import { Send, Users, TrendingUp, Clock, Loader2, Trash2, Edit } from 'lucide-react';
 import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
+import { RenameThreadModal } from '@/components/ui/rename-thread-modal';
 import { toast } from 'sonner';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
-import type { ChatThread, Connection } from '@/lib/types';
+import type { ChatThread, Connection, SyncRequestPayload, SyncRun } from '@/lib/types';
 
 type UiMessage = {
   id: string;
@@ -219,20 +220,64 @@ function MarkdownText({ content }: { content: string }) {
   return <div className="space-y-2">{blocks}</div>;
 }
 
+const SYNC_REQUEST_RE = /<sync_request>([\s\S]*?)<\/sync_request>/i;
+const SYNC_RUN_RE = /<sync_run>([\s\S]*?)<\/sync_run>/i;
+
+function parseSyncBlocks(content: string): {
+  text: string;
+  syncRequest?: SyncRequestPayload;
+  syncRunId?: number;
+} {
+  let syncRequest: SyncRequestPayload | undefined;
+  let syncRunId: number | undefined;
+
+  const reqMatch = content.match(SYNC_REQUEST_RE);
+  if (reqMatch?.[1]) {
+    try {
+      syncRequest = JSON.parse(reqMatch[1]) as SyncRequestPayload;
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+
+  const runMatch = content.match(SYNC_RUN_RE);
+  if (runMatch?.[1]) {
+    try {
+      const payload = JSON.parse(runMatch[1]) as { run_id?: number; runId?: number; id?: number };
+      const id = payload.run_id ?? payload.runId ?? payload.id;
+      if (typeof id === 'number') syncRunId = id;
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+
+  const text = content
+    .replace(SYNC_REQUEST_RE, '')
+    .replace(SYNC_RUN_RE, '')
+    .trim();
+
+  return { text, syncRequest, syncRunId };
+}
+
 export default function AnalysisChat() {
   const [input, setInput] = useState('');
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [threadToDelete, setThreadToDelete] = useState<ChatThread | null>(null);
+  const [threadToRename, setThreadToRename] = useState<ChatThread | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [primaryRepoName, setPrimaryRepoName] = useState<string>('');
+  const [activeSyncRunId, setActiveSyncRunId] = useState<number | null>(null);
+  const [syncRun, setSyncRun] = useState<SyncRun | null>(null);
+  const [isStartingSync, setIsStartingSync] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const messagesRequestRef = useRef(0);
   const selectedThreadIdRef = useRef<string | null>(null);
+  const syncStatusRef = useRef<string | null>(null);
 
   const { user } = useUser();
   const { currentProject } = useProjectStore();
@@ -244,12 +289,6 @@ export default function AnalysisChat() {
     if (!selectedThreadId) return null;
     return threads.find((t) => t.thread_id === selectedThreadId) ?? null;
   }, [selectedThreadId, threads]);
-
-  const quickActions = [
-    { label: 'Velocity trend', icon: TrendingUp },
-    { label: 'Blocked work', icon: Clock },
-    { label: 'Developer insights', icon: Users },
-  ];
 
   const refreshThreads = async () => {
     try {
@@ -340,6 +379,59 @@ export default function AnalysisChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    // Auto-detect sync run IDs embedded in assistant messages.
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role !== 'assistant') continue;
+      const parsed = parseSyncBlocks(messages[i].content);
+      if (parsed.syncRunId) {
+        setActiveSyncRunId(parsed.syncRunId);
+        break;
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (!activeSyncRunId) {
+      setSyncRun(null);
+      syncStatusRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+    const tick = async () => {
+      const run = await HttpService.getSyncRun(activeSyncRunId);
+      if (cancelled || !run) return;
+      setSyncRun(run);
+
+      if (syncStatusRef.current !== run.status) {
+        syncStatusRef.current = run.status;
+        if (run.status === 'completed') toast.success('Sync completed');
+        if (run.status === 'failed') toast.error('Sync failed');
+      }
+    };
+
+    tick();
+    const handle = window.setInterval(tick, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+    };
+  }, [activeSyncRunId]);
+
+  const handleStartSync = async (payload: SyncRequestPayload) => {
+    setIsStartingSync(true);
+    const run = await HttpService.startSync(payload);
+    setIsStartingSync(false);
+
+    if (!run?.id) {
+      toast.error('Failed to start sync');
+      return;
+    }
+    setActiveSyncRunId(run.id);
+    toast.success(`Sync started (run: ${run.id})`);
+  };
 
   const handleNewConversation = () => {
     const id = createThreadId();
@@ -492,6 +584,23 @@ export default function AnalysisChat() {
     setThreadToDelete(null);
   };
 
+  const handleRenameThread = async (title: string) => {
+    if (!threadToRename) return;
+    const id = threadToRename.thread_id;
+    const success = await HttpService.renameChatThread(id, title);
+    if (success) {
+      setThreads((prev) => prev.map((t) => (t.thread_id === id ? { ...t, title, updated_at: new Date().toISOString() } : t)));
+      if (selectedThreadId === id) {
+        // refresh messages or just rely on thread title update
+        await refreshThreads();
+      }
+      toast.success('Conversation renamed');
+    } else {
+      toast.error('Failed to rename conversation');
+    }
+    setThreadToRename(null);
+  };
+
   return (
     <div className="h-[calc(100vh-4rem)] flex gap-6 p-6">
       {/* Left sidebar - Conversations */}
@@ -524,16 +633,29 @@ export default function AnalysisChat() {
                 <p className="text-xs text-muted-foreground">{formatRelative(thread.updated_at)}</p>
               </button>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setThreadToDelete(thread);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-md transition-all"
-                title="Delete conversation"
-              >
-                <Trash2 size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setThreadToRename(thread);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent/10 text-muted-foreground hover:text-foreground rounded-md transition-all"
+                  title="Rename conversation"
+                >
+                  <Edit size={14} />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setThreadToDelete(thread);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-md transition-all"
+                  title="Delete conversation"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
 
@@ -559,6 +681,37 @@ export default function AnalysisChat() {
           </div>
         </div>
 
+        {syncRun && syncRun.status !== 'completed' && (
+          <div className="border-b border-border/50 px-6 py-3 bg-muted/30">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-sm text-foreground">Sync in progress</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {syncRun.message || `Run ${syncRun.id} (${syncRun.status})`}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground whitespace-nowrap">
+                {syncRun.progress_total
+                  ? `${Math.min(
+                      100,
+                      Math.round((syncRun.progress_current / syncRun.progress_total) * 100),
+                    )}%`
+                  : '…'}
+              </div>
+            </div>
+            <div className="mt-2 h-2 w-full rounded bg-border overflow-hidden">
+              <div
+                className="h-2 bg-primary transition-all"
+                style={{
+                  width: syncRun.progress_total
+                    ? `${Math.min(100, (syncRun.progress_current / syncRun.progress_total) * 100)}%`
+                    : '35%',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {isLoadingMessages && (
@@ -567,42 +720,60 @@ export default function AnalysisChat() {
               Loading messages...
             </div>
           )}
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-3xl ${message.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2'
-                  : 'space-y-4'
-                  }`}
-              >
-                {message.role === 'assistant' && (
-                  <div
-                    className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2"
-                    title={formatTimestamp(message.createdAt)}
-                  >
-                    <div className="text-foreground">
-                      <MarkdownText content={message.content} />
-                    </div>
-                    {message.isStreaming && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 size={14} className="animate-spin" />
-                        Generating...
-                      </div>
-                    )}
+          {messages.map((message, index) => {
+            const showSeparator = index === 0 || !isSameDay(messages[index - 1].createdAt, message.createdAt);
+
+            return (
+              <div key={message.id}>
+                {showSeparator && (
+                  <div className="flex justify-center my-4">
+                    <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                      {formatDateSeparator(message.createdAt)}
+                    </span>
                   </div>
                 )}
 
-                {message.role === 'user' && (
-                  <p className="whitespace-pre-line" title={formatTimestamp(message.createdAt)}>
-                    {message.content}
-                  </p>
-                )}
+                <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-3xl ${message.role === 'user'
+                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2'
+                      : 'space-y-4'
+                      }`}
+                  >
+                    {message.role === 'assistant' && (
+                      <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2">
+                        <div className="text-foreground">
+                          <MarkdownText content={message.content} />
+                        </div>
+                        {message.isStreaming && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 size={14} className="animate-spin" />
+                            Generating...
+                          </div>
+                        )}
+                        {!message.isStreaming && message.createdAt && (
+                          <div className="text-[10px] text-muted-foreground text-right">
+                            {formatMessageTime(message.createdAt)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {message.role === 'user' && (
+                      <>
+                        <p className="whitespace-pre-line">
+                          {message.content}
+                        </p>
+                        <div className="text-[10px] text-primary-foreground/70 text-right">
+                          {formatMessageTime(message.createdAt)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={bottomRef} />
         </div>
 
@@ -643,6 +814,50 @@ export default function AnalysisChat() {
         title="Delete Conversation"
         description="Are you sure you want to delete this conversation? This action cannot be undone."
       />
+
+      <RenameThreadModal
+        isOpen={!!threadToRename}
+        onClose={() => setThreadToRename(null)}
+        onConfirm={handleRenameThread}
+        currentTitle={threadToRename?.title ?? ''}
+      />
     </div>
   );
+}
+
+// Helper to safely parse dates, assuming UTC if no offset provided
+function parseDate(dateStr: string) {
+  let finalStr = dateStr;
+  if (!dateStr.endsWith('Z') && !dateStr.includes('+')) {
+    finalStr += 'Z';
+  }
+  return new Date(finalStr);
+}
+
+function formatDateSeparator(dateStr?: string) {
+  if (!dateStr) return '';
+  const date = parseDate(dateStr);
+  const now = new Date();
+
+  // Normalize to start of day for comparison
+  const d = new Date(date); d.setHours(0, 0, 0, 0);
+  const n = new Date(now); n.setHours(0, 0, 0, 0);
+  const yesterday = new Date(n);
+  yesterday.setDate(n.getDate() - 1);
+
+  if (d.getTime() === n.getTime()) return 'Hoy';
+  if (d.getTime() === yesterday.getTime()) return 'Ayer';
+
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+}
+
+function formatMessageTime(dateStr?: string) {
+  if (!dateStr) return '';
+  const date = parseDate(dateStr);
+  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function isSameDay(d1?: string, d2?: string) {
+  if (!d1 || !d2) return false;
+  return parseDate(d1).toDateString() === parseDate(d2).toDateString();
 }
