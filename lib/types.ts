@@ -10,6 +10,7 @@ export interface Connection {
   project: string;
   status: string;
   lastSync: string;
+  last_error?: string;
 }
 
 export interface ChatThread {
@@ -44,4 +45,27 @@ export interface CreateConnectionPayload {
   linear_api_key?: string;
   linear_team_key?: string;
   user_id?: string;
+}
+
+export interface SyncRequestPayload {
+  project_name: string;
+  repo_name?: string | null;
+  providers?: string[];
+  full_history?: boolean;
+  max_commits?: number | null;
+  max_prs?: number | null;
+  max_tickets?: number | null;
+}
+
+export interface SyncRun {
+  id: number;
+  status: "queued" | "running" | "completed" | "failed" | string;
+  provider: string;
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  progress_current: number;
+  progress_total?: number | null;
+  message?: string | null;
+  details?: Record<string, unknown>;
 }

@@ -1,6 +1,19 @@
-import { ChatMessage, ChatThread, Connection, CreateConnectionPayload, Project, Report } from "@/lib/types";
+import {
+  ChatMessage,
+  ChatThread,
+  Connection,
+  CreateConnectionPayload,
+  Project,
+  Report,
+  SyncRequestPayload,
+  SyncRun,
+} from "@/lib/types";
 
 export class HttpService {
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+  }
+
   static async getProjects(): Promise<Project[]> {
     try {
       const response = await fetch('/api/projects');
@@ -144,6 +157,44 @@ export class HttpService {
     } catch (error) {
       console.error('Error deleting report:', error);
       return false;
+    }
+  }
+
+  static async startSync(payload: SyncRequestPayload): Promise<SyncRun | null> {
+    try {
+      const response = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (!response.ok) {
+        const message = HttpService.isRecord(data)
+          ? String(data.error ?? data.message ?? `Failed to start sync (${response.status})`)
+          : `Failed to start sync (${response.status})`;
+        throw new Error(message);
+      }
+      return data as SyncRun;
+    } catch (error) {
+      console.error("Error starting sync:", error);
+      throw error;
+    }
+  }
+
+  static async getSyncRun(runId: number): Promise<SyncRun | null> {
+    try {
+      const response = await fetch(`/api/sync/runs/${runId}`, { cache: "no-store" });
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (!response.ok) {
+        const message = HttpService.isRecord(data)
+          ? String(data.error ?? data.message ?? `Failed to fetch sync run (${response.status})`)
+          : `Failed to fetch sync run (${response.status})`;
+        throw new Error(message);
+      }
+      return data as SyncRun;
+    } catch (error) {
+      console.error("Error fetching sync run:", error);
+      return null;
     }
   }
 }
