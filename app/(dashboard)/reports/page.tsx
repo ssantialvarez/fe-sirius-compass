@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-modal';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
 import type { Report } from '@/lib/types';
@@ -71,9 +72,63 @@ export default function Reports() {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isRisksOpen, setIsRisksOpen] = useState(false);
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
+
+  // Filter States
+  const [timeValue, setTimeValue] = useState<number>(3);
+  const [timeUnit, setTimeUnit] = useState<string>('months'); // 'minutes' | 'hours' | 'days' | 'months'
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const { currentProject } = useProjectStore();
 
   const projectName = currentProject?.name;
+
+  const filteredReports = useMemo(() => {
+    return reports.filter((report) => {
+      // 1. Status Filter
+      if (statusFilter !== 'all' && report.status !== statusFilter) {
+        return false;
+      }
+
+      // 2. Time Range Filter (Robust Diff Logic)
+      if (!timeValue || timeValue <= 0) return true; // Show all if invalid/empty input
+
+      // Handle Naive UTC string from backend
+      let dateStr = report.created_at;
+      if (dateStr && !dateStr.endsWith('Z') && !dateStr.includes('+')) {
+        dateStr += 'Z';
+      }
+
+      const reportDate = new Date(dateStr);
+      const now = new Date();
+
+      if (isNaN(reportDate.getTime())) return true; // Fail safe
+
+      const diffMs = now.getTime() - reportDate.getTime();
+      let limitMs = 0;
+
+      switch (timeUnit) {
+        case 'minutes':
+          limitMs = timeValue * 60 * 1000;
+          break;
+        case 'hours':
+          limitMs = timeValue * 60 * 60 * 1000;
+          break;
+        case 'days':
+          limitMs = timeValue * 24 * 60 * 60 * 1000;
+          break;
+        case 'months':
+          limitMs = timeValue * 30 * 24 * 60 * 60 * 1000; // Approx 30 days
+          break;
+        default:
+          limitMs = Infinity;
+      }
+
+      // If diffMs is negative (clock skew), treat as "just now" (so it matches)
+      if (diffMs < 0) return true;
+
+      return diffMs <= limitMs;
+    });
+  }, [reports, statusFilter, timeValue, timeUnit]);
 
   const canDownload = useMemo(() => {
     // We can still generate PDFs without a selected project, but the UI is more predictable
@@ -189,42 +244,41 @@ export default function Reports() {
     <div className="space-y-8 p-8">
       {/* Filters */}
       <Card className="bg-card border-border">
-        <CardContent className="p-6">
+        <CardContent className="px-8 flex gap-[40vw]">
           <div className="flex items-center gap-4 mb-4">
             <Filter size={20} className="text-muted-foreground" />
             <h3 className="text-foreground font-medium">Filters</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Project</Label>
-              <Select defaultValue="current">
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">{projectName ?? 'Current project'}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="flex gap-8">
             <div className="space-y-2">
               <Label className="text-muted-foreground">Time Range</Label>
-              <Select defaultValue="3months">
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3months">Last 3 months</SelectItem>
-                  <SelectItem value="6months">Last 6 months</SelectItem>
-                  <SelectItem value="year">Last year</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-lg text-muted-foreground whitespace-nowrap">Last</span>
+                <Input
+                  type="number"
+                  min={1}
+                  className="w-20"
+                  value={timeValue}
+                  onChange={(e) => setTimeValue(parseInt(e.target.value) || 0)}
+                />
+                <Select value={timeUnit} onValueChange={setTimeUnit}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minutes">Minutes</SelectItem>
+                    <SelectItem value="hours">Hours</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-muted-foreground">Status</Label>
-              <Select defaultValue="all">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -237,13 +291,6 @@ export default function Reports() {
               </Select>
             </div>
           </div>
-
-          <div className="flex gap-3 mt-6">
-            <Button disabled>Apply Filters</Button>
-            <Button variant="outline" disabled>
-              Clear
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -253,13 +300,13 @@ export default function Reports() {
           <div className="text-sm text-muted-foreground">Loading reports...</div>
         )}
 
-        {!isLoading && reports.length === 0 && (
+        {!isLoading && filteredReports.length === 0 && (
           <div className="text-sm text-muted-foreground">
-            No reports found. Run an analysis to generate reports.
+            No reports found matching your criteria.
           </div>
         )}
 
-        {reports.map((report) => (
+        {filteredReports.map((report) => (
           <div key={report.id} className="contents">
             <Card
               className={`bg-card border-border hover:border-primary/50 transition-all ${selectedReportId === report.id ? 'border-primary ring-1 ring-primary' : ''
