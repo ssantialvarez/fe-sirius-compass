@@ -71,6 +71,7 @@ export interface Report {
   repository: string;
   status: "healthy" | "watch" | "at-risk" | string;
   summary: string;
+  risk_details?: string;
   created_at: string;
 }
 
