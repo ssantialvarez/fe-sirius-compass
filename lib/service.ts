@@ -3,15 +3,25 @@ import {
   ChatThread,
   Connection,
   CreateConnectionPayload,
+  InviteGuestRequest,
+  ProjectGuestDTO,
   Project,
   Report,
+  SaveUserSettingsPayload,
   SyncRequestPayload,
   SyncRun,
+  UserSettings,
 } from "@/lib/types";
 
 export class HttpService {
   private static isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
+  }
+
+  private static async readErrorMessage(response: Response): Promise<string> {
+    const text = await response.text().catch(() => "");
+    if (text) return text;
+    return `Request failed (${response.status})`;
   }
 
   static async getProjects(): Promise<Project[]> {
@@ -24,6 +34,60 @@ export class HttpService {
     } catch (error) {
       console.error('Error fetching projects:', error);
       return [];
+    }
+  }
+
+  static async inviteProjectGuest(payload: InviteGuestRequest): Promise<ProjectGuestDTO | null> {
+    try {
+      const response = await fetch('/api/projects/guests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await this.readErrorMessage(response));
+      }
+
+      return (await response.json().catch(() => null)) as ProjectGuestDTO | null;
+    } catch (error) {
+      console.error('Error inviting project guest:', error);
+      return null;
+    }
+  }
+
+  static async getProjectGuests(projectId: string): Promise<ProjectGuestDTO[]> {
+    if (!projectId) return [];
+
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/guests`, {
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        throw new Error(await this.readErrorMessage(response));
+      }
+      return (await response.json().catch(() => [])) as ProjectGuestDTO[];
+    } catch (error) {
+      console.error('Error fetching project guests:', error);
+      return [];
+    }
+  }
+
+  static async removeProjectGuest(projectId: string, guestId: string): Promise<boolean> {
+    if (!projectId || !guestId) return false;
+    try {
+      const response = await fetch(
+        `/api/projects/${encodeURIComponent(projectId)}/guests/${encodeURIComponent(guestId)}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) {
+        throw new Error(await this.readErrorMessage(response));
+      }
+      return true;
+    } catch (error) {
+      console.error('Error removing project guest:', error);
+      return false;
     }
   }
 
@@ -42,6 +106,56 @@ export class HttpService {
     } catch (error) {
       console.error('Error creating project:', error);
       return null;
+    }
+  }
+
+  static async getUserSettings(): Promise<UserSettings> {
+    try {
+      const response = await fetch("/api/user-settings", { cache: "no-store" });
+      if (!response.ok) {
+        return {};
+      }
+      const raw = (await response.json().catch(() => ({}))) as unknown;
+      if (!this.isRecord(raw)) return {};
+
+      // Accept either camelCase or snake_case from backend.
+      const defaultProjectId =
+        (typeof raw.defaultProjectId === "string" ? raw.defaultProjectId : undefined) ??
+        (typeof raw.default_project_id === "string" ? raw.default_project_id : undefined) ??
+        null;
+
+      const defaultTimeRange =
+        (typeof raw.defaultTimeRange === "string" ? raw.defaultTimeRange : undefined) ??
+        (typeof raw.default_time_range === "string" ? raw.default_time_range : undefined);
+
+      return {
+        defaultProjectId,
+        ...(defaultTimeRange ? { defaultTimeRange } : {}),
+      };
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+      return {};
+    }
+  }
+
+  static async saveUserSettings(payload: SaveUserSettingsPayload): Promise<boolean> {
+    try {
+      // Send snake_case to match typical Python backends.
+      const body = {
+        default_project_id: payload.defaultProjectId,
+        default_time_range: payload.defaultTimeRange,
+      };
+
+      const response = await fetch("/api/user-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error("Error saving user settings:", error);
+      return false;
     }
   }
 
