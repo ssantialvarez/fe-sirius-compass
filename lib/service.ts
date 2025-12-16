@@ -16,7 +16,7 @@ export class HttpService {
 
   static async getProjects(): Promise<Project[]> {
     try {
-      const response = await fetch('/api/projects');
+      const response = await fetch('/api/projects', { cache: 'no-store' });
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }
@@ -24,6 +24,24 @@ export class HttpService {
     } catch (error) {
       console.error('Error fetching projects:', error);
       return [];
+    }
+  }
+
+  static async createProject(payload: { name: string }): Promise<Project | null> {
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Failed to create project');
+      }
+      return (await response.json()) as Project;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      return null;
     }
   }
 

@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useUser } from '@auth0/nextjs-auth0';
 import { Project } from '@/lib/types';
 import { HttpService } from '@/lib/service';
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 
 export default function Settings() {
   const [projects, setProjects] = useState([] as Project[]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { user } = useUser();
   // TODO: por ahora fetchea de auth0 pero deberia fetchear de nuestra propia bd
   const [profile, setProfile] = useState({
@@ -25,6 +27,17 @@ export default function Settings() {
       try {
         const data = await HttpService.getProjects();
         setProjects(data);
+
+        // Default: if no selection (or selection no longer exists), pick the first project.
+        if (data.length > 0) {
+          setWorkspace((prev) => {
+            const stillExists = prev.defaultProjectId && data.some((p) => p.id === prev.defaultProjectId);
+            return {
+              ...prev,
+              defaultProjectId: stillExists ? prev.defaultProjectId : data[0].id,
+            };
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -48,7 +61,7 @@ export default function Settings() {
   });
   */
   const [workspace, setWorkspace] = useState({
-    defaultProject: 'Project Alpha',
+    defaultProjectId: '',
     defaultTimeRange: 'Last 4 weeks',
   });
 
@@ -215,21 +228,43 @@ export default function Settings() {
             <Label className="text-muted-foreground">
               Default Project
             </Label>
-            <Select 
-              value={workspace.defaultProject} 
-              onValueChange={(value) => setWorkspace({ ...workspace, defaultProject: value })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.name}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!isLoading && projects.length === 0 ? (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                No projects yet. Create one to get started.
+                <div className="mt-3">
+                  <Button variant="outline" onClick={() => setIsCreateOpen(true)}>
+                    Create project
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Select
+                value={workspace.defaultProjectId}
+                onValueChange={(value) => {
+                  if (value === '__create__') {
+                    setIsCreateOpen(true);
+                    return;
+                  }
+                  setWorkspace({ ...workspace, defaultProjectId: value });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoading ? (
+                    <SelectItem disabled value="__loading__">Loading…</SelectItem>
+                  ) : (
+                    projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))
+                  )}
+                  <SelectItem value="__create__">+ Create project</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -258,6 +293,15 @@ export default function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      <CreateProjectDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreated={(project) => {
+          setProjects((prev) => [...prev, project]);
+          setWorkspace((prev) => ({ ...prev, defaultProjectId: project.id }));
+        }}
+      />
     </div>
   );
 }
