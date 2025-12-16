@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Connection } from "@/lib/types"
-import { GitBranch, Trello, RefreshCw, Settings, CheckCircle, Loader, XCircle } from "lucide-react"
+import { GitBranch, Trello, RefreshCw, Settings, Sparkles, CheckCircle, Loader, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { HttpService } from "@/lib/service"
@@ -111,24 +111,61 @@ import { toast } from "sonner"
 
 function ConnectionActions({ connection }: { connection: Connection }) {
   const { user } = useUser()
-  const [isRunning, setIsRunning] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const isConnectionSyncing = connection.status === "syncing"
+
+  const handleSync = async () => {
+    if (isConnectionSyncing) {
+      toast.info("Sync already in progress")
+      return
+    }
+    setIsSyncing(true)
+    const run = await HttpService.startSync({
+      project_name: connection.project,
+      repo_name: connection.type === "Repository" ? connection.name : undefined,
+      providers: connection.type === "Repository" ? ["github", "linear"] : ["linear"],
+      full_history: false,
+      max_commits: 300,
+      max_prs: 200,
+      max_tickets: 200,
+    })
+    setIsSyncing(false)
+
+    if (run?.id) {
+      toast.success(`Sync started (run: ${run.id})`)
+      window.dispatchEvent(new Event('connection-updated'))
+      return
+    }
+    toast.error("Failed to start sync")
+  }
 
   const handleAnalyze = async () => {
     if (connection.type !== "Repository") return
-    setIsRunning(true)
-    await HttpService.analyzeRepository({
+    if (isConnectionSyncing) {
+      toast.info("Sync in progress. Please wait until it finishes to run analysis.")
+      return
+    }
+    setIsAnalyzing(true)
+    const ok = await HttpService.analyzeRepository({
       repo_url: `https://github.com/${connection.name}`,
       developer_name: "Team",
       lookback_days: 90,
       project_name: connection.project,
       user_id: user?.sub,
     })
-    setIsRunning(false)
+    setIsAnalyzing(false)
+    if (ok) {
+      toast.success("Analysis started")
+    } else {
+      toast.error("Failed to start analysis")
+    }
   }
 
   const handleDelete = async () => {
-    const success = await HttpService.deleteConnection(connection.id, connection.type as any)
+    const type = connection.type === "Repository" ? "Repository" : "Board"
+    const success = await HttpService.deleteConnection(connection.id, type)
     if (success) {
       toast.success("Connection deleted")
       // Trigger refresh in parent
@@ -146,11 +183,27 @@ function ConnectionActions({ connection }: { connection: Connection }) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
-          onClick={handleAnalyze}
-          disabled={isRunning || connection.type !== "Repository"}
-          title={connection.type === "Repository" ? "Run analysis" : "Not supported"}
+          onClick={handleSync}
+          disabled={isSyncing || isConnectionSyncing}
+          title="Sync data"
         >
-          <RefreshCw size={16} className={isRunning ? "animate-spin" : ""} />
+          <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+          onClick={handleAnalyze}
+          disabled={isAnalyzing || connection.type !== "Repository" || isConnectionSyncing}
+          title={
+            connection.type !== "Repository"
+              ? "Not supported"
+              : isConnectionSyncing
+                ? "Sync in progress"
+                : "Run analysis"
+          }
+        >
+          <Sparkles size={16} className={isAnalyzing ? "animate-pulse" : ""} />
         </Button>
         <Button
           variant="ghost"
@@ -182,4 +235,3 @@ function ConnectionActions({ connection }: { connection: Connection }) {
     </>
   )
 }
-

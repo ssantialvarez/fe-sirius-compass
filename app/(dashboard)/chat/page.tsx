@@ -7,7 +7,7 @@ import { DeleteConfirmationModal } from '@/components/ui/delete-confirmation-mod
 import { toast } from 'sonner';
 import { HttpService } from '@/lib/service';
 import { useProjectStore } from '@/lib/store';
-import type { ChatThread, Connection } from '@/lib/types';
+import type { ChatThread, Connection, SyncRequestPayload, SyncRun } from '@/lib/types';
 
 type UiMessage = {
   id: string;
@@ -219,6 +219,45 @@ function MarkdownText({ content }: { content: string }) {
   return <div className="space-y-2">{blocks}</div>;
 }
 
+const SYNC_REQUEST_RE = /<sync_request>([\s\S]*?)<\/sync_request>/i;
+const SYNC_RUN_RE = /<sync_run>([\s\S]*?)<\/sync_run>/i;
+
+function parseSyncBlocks(content: string): {
+  text: string;
+  syncRequest?: SyncRequestPayload;
+  syncRunId?: number;
+} {
+  let syncRequest: SyncRequestPayload | undefined;
+  let syncRunId: number | undefined;
+
+  const reqMatch = content.match(SYNC_REQUEST_RE);
+  if (reqMatch?.[1]) {
+    try {
+      syncRequest = JSON.parse(reqMatch[1]) as SyncRequestPayload;
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+
+  const runMatch = content.match(SYNC_RUN_RE);
+  if (runMatch?.[1]) {
+    try {
+      const payload = JSON.parse(runMatch[1]) as { run_id?: number; runId?: number; id?: number };
+      const id = payload.run_id ?? payload.runId ?? payload.id;
+      if (typeof id === 'number') syncRunId = id;
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+
+  const text = content
+    .replace(SYNC_REQUEST_RE, '')
+    .replace(SYNC_RUN_RE, '')
+    .trim();
+
+  return { text, syncRequest, syncRunId };
+}
+
 export default function AnalysisChat() {
   const [input, setInput] = useState('');
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -229,10 +268,14 @@ export default function AnalysisChat() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [primaryRepoName, setPrimaryRepoName] = useState<string>('');
+  const [activeSyncRunId, setActiveSyncRunId] = useState<number | null>(null);
+  const [syncRun, setSyncRun] = useState<SyncRun | null>(null);
+  const [isStartingSync, setIsStartingSync] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const messagesRequestRef = useRef(0);
   const selectedThreadIdRef = useRef<string | null>(null);
+  const syncStatusRef = useRef<string | null>(null);
 
   const { user } = useUser();
   const { currentProject } = useProjectStore();
@@ -340,6 +383,59 @@ export default function AnalysisChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    // Auto-detect sync run IDs embedded in assistant messages.
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role !== 'assistant') continue;
+      const parsed = parseSyncBlocks(messages[i].content);
+      if (parsed.syncRunId) {
+        setActiveSyncRunId(parsed.syncRunId);
+        break;
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (!activeSyncRunId) {
+      setSyncRun(null);
+      syncStatusRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+    const tick = async () => {
+      const run = await HttpService.getSyncRun(activeSyncRunId);
+      if (cancelled || !run) return;
+      setSyncRun(run);
+
+      if (syncStatusRef.current !== run.status) {
+        syncStatusRef.current = run.status;
+        if (run.status === 'completed') toast.success('Sync completed');
+        if (run.status === 'failed') toast.error('Sync failed');
+      }
+    };
+
+    tick();
+    const handle = window.setInterval(tick, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+    };
+  }, [activeSyncRunId]);
+
+  const handleStartSync = async (payload: SyncRequestPayload) => {
+    setIsStartingSync(true);
+    const run = await HttpService.startSync(payload);
+    setIsStartingSync(false);
+
+    if (!run?.id) {
+      toast.error('Failed to start sync');
+      return;
+    }
+    setActiveSyncRunId(run.id);
+    toast.success(`Sync started (run: ${run.id})`);
+  };
 
   const handleNewConversation = () => {
     const id = createThreadId();
@@ -559,6 +655,37 @@ export default function AnalysisChat() {
           </div>
         </div>
 
+        {syncRun && syncRun.status !== 'completed' && (
+          <div className="border-b border-border/50 px-6 py-3 bg-muted/30">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-sm text-foreground">Sync in progress</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {syncRun.message || `Run ${syncRun.id} (${syncRun.status})`}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground whitespace-nowrap">
+                {syncRun.progress_total
+                  ? `${Math.min(
+                      100,
+                      Math.round((syncRun.progress_current / syncRun.progress_total) * 100),
+                    )}%`
+                  : '…'}
+              </div>
+            </div>
+            <div className="mt-2 h-2 w-full rounded bg-border overflow-hidden">
+              <div
+                className="h-2 bg-primary transition-all"
+                style={{
+                  width: syncRun.progress_total
+                    ? `${Math.min(100, (syncRun.progress_current / syncRun.progress_total) * 100)}%`
+                    : '35%',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {isLoadingMessages && (
@@ -584,7 +711,29 @@ export default function AnalysisChat() {
                     title={formatTimestamp(message.createdAt)}
                   >
                     <div className="text-foreground">
-                      <MarkdownText content={message.content} />
+                      {(() => {
+                        const parsed = parseSyncBlocks(message.content);
+                        return (
+                          <>
+                            <MarkdownText content={parsed.text} />
+                            {parsed.syncRequest && (
+                              <div className="mt-4 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartSync(parsed.syncRequest!)}
+                                  disabled={isStartingSync}
+                                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-60"
+                                >
+                                  {isStartingSync ? 'Starting sync…' : 'Sync now'}
+                                </button>
+                                <div className="text-xs text-muted-foreground">
+                                  Runs in background. You can keep chatting.
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     {message.isStreaming && (
                       <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
